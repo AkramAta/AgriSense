@@ -137,25 +137,145 @@ class GeminiService {
     }
 
     // Expert Agronomy Fallback Engine
-    final lower = prompt.toLowerCase();
-    if (lower.contains('water') || lower.contains('irrigation') || lower.contains('moisture')) {
-      return '**AgriSense Irrigation Directive:**\n'
-          '• **Optimal Moisture Range:** Maintain soil moisture between 45% and 65% for fruiting tomatoes.\n'
-          '• **Watering Depth:** Deep, infrequent watering encourages deep taproots and prevents blossom end rot.\n'
-          '• **Automated Pump Safeguard:** Keep single-cycle auto run times under 15 minutes to prevent saturated root suffocation.';
+    final lower = prompt.toLowerCase().trim();
+
+    // 1. Polite Greetings & Pleasantries
+    if (lower == 'hello' ||
+        lower == 'hi' ||
+        lower == 'hey' ||
+        lower.startsWith('hello') ||
+        lower.startsWith('hi ') ||
+        lower.startsWith('hey ') ||
+        lower.contains('good morning') ||
+        lower.contains('good afternoon') ||
+        lower.contains('good evening') ||
+        lower == 'greetings') {
+      if (activeDiagnosis != null && activeDiagnosis.containsKey('class_name')) {
+        final disease = _formatClassName(activeDiagnosis['class_name']);
+        return 'Hello! I am your AgriSense AI Agronomist. I see you recently diagnosed **$disease** on your tomato foliage.\n\n'
+            'How can I help you today? You can ask about recommended fungicide sprays, organic treatments, pruning techniques, or irrigation adjustments.';
+      } else {
+        return 'Hello! I am your AgriSense AI Agronomist. How can I assist you with your tomato crops, foliar disease identification, or smart irrigation today?';
+      }
     }
 
+    // 2. Expressions of Gratitude
+    if (lower.contains('thank') || lower.contains('appreciate') || lower == 'ok' || lower == 'okay' || lower == 'got it') {
+      return 'You\'re very welcome! Keep a close eye on your soil moisture levels and inspect your foliage regularly. Feel free to ask anytime if you need more agronomic advice.';
+    }
+
+    // 3. Irrigation, Soil Moisture, Watering
+    if (lower.contains('water') || lower.contains('irrigation') || lower.contains('moisture') || lower.contains('pump') || lower.contains('schedule')) {
+      if (activeDiagnosis != null && activeDiagnosis.containsKey('class_name')) {
+        final disease = _formatClassName(activeDiagnosis['class_name']);
+        return '**Irrigation Directive for $disease Management:**\n'
+            '• **Strict Foliage Dryness:** Avoid overhead sprinkler irrigation entirely; wetting the canopy promotes spore germination.\n'
+            '• **Root-Zone Drip System:** Maintain soil moisture between 45% and 60% using root-level drip lines.\n'
+            '• **Morning Watering Window:** Irrigate during early morning hours so any splash dries quickly under sunlight.\n'
+            '• **Automated Pump Safeguard:** Limit single-run irrigation duration to under 15 minutes to prevent saturated root hypoxia.';
+      } else {
+        return '**AgriSense Smart Irrigation Protocol:**\n'
+            '• **Optimal Soil Moisture:** Maintain soil moisture between 45% and 65% for fruiting tomatoes.\n'
+            '• **Deep Root Hydration:** Infrequent, deep watering encourages deep taproot growth and prevents blossom end rot.\n'
+            '• **Safety Auto-Cutoff:** Keep single-cycle auto run times under 15 minutes to prevent waterlogging and root rot.';
+      }
+    }
+
+    // 4. Chemical Spray, Fungicides, Treatments
+    if (lower.contains('spray') ||
+        lower.contains('chemical') ||
+        lower.contains('fungicide') ||
+        lower.contains('pesticide') ||
+        lower.contains('copper') ||
+        lower.contains('treatment') ||
+        lower.contains('treat') ||
+        lower.contains('cure') ||
+        lower.contains('medicine')) {
+      if (activeDiagnosis != null && activeDiagnosis.containsKey('class_name')) {
+        final disease = _formatClassName(activeDiagnosis['class_name']);
+        final chemical = activeDiagnosis['chemical_control'] ?? 'Apply chlorothalonil or copper-based protective fungicide.';
+        return '**Foliar Fungicide Protocol for $disease:**\n'
+            '• **Recommended Spray:** $chemical\n'
+            '• **Application Timing:** Spray early morning or late afternoon when wind speeds are under 8 km/h and temperatures are below 28°C.\n'
+            '• **Canopy Coverage:** Ensure thorough coverage on both upper and lower leaf surfaces.\n'
+            '• **Rotational Resistance:** Rotate fungicides with different FRAC codes every 2 to 3 applications.';
+      } else {
+        return '**General Disease Treatment Guidelines:**\n'
+            '• **Protective Fungicides:** Copper octanoate or chlorothalonil are broad-spectrum options for fungal and bacterial leaf spots.\n'
+            '• **Preventive Application:** Spray at the first sign of lower-canopy spotting before infection reaches flowering clusters.\n'
+            '• **Sanitation:** Sterilize spray equipment and pruning shears between plants.';
+      }
+    }
+
+    // 5. Organic Remedies, Natural Sprays, Cultural Practices
+    if (lower.contains('organic') ||
+        lower.contains('natural') ||
+        lower.contains('soap') ||
+        lower.contains('biological') ||
+        lower.contains('neem') ||
+        lower.contains('bicarbonate') ||
+        lower.contains('prun')) {
+      if (activeDiagnosis != null && activeDiagnosis.containsKey('class_name')) {
+        final disease = _formatClassName(activeDiagnosis['class_name']);
+        final organic = activeDiagnosis['organic_control'] ?? 'Spray copper soap or potassium bicarbonate.';
+        final cultural = activeDiagnosis['cultural_practices'] ?? 'Prune lower leaves 12 inches above ground; mulch soil to stop splashback.';
+        return '**Organic & Cultural Remediation for $disease:**\n'
+            '• **Organic Spray:** $organic\n'
+            '• **Canopy Aeration:** $cultural\n'
+            '• **Soil Barrier:** Apply 2-3 inches of clean organic straw mulch around plant bases to prevent soil splash.\n'
+            '• **Disposal:** Dispose of pruned diseased foliage in the trash; do not place in compost heaps.';
+      } else {
+        return '**Organic Plant Health Measures:**\n'
+            '• **Bio-fungicides:** Bacillus subtilis and copper octanoate are OMRI-listed for organic disease suppression.\n'
+            '• **Pruning:** Prune all bottom suckers and foliage touching the ground to maximize air circulation.\n'
+            '• **Mulching:** Use straw or plastic mulch to isolate soil-borne spores from foliage.';
+      }
+    }
+
+    // 6. Symptoms, Causes, Pathological Identification
+    if (lower.contains('symptom') ||
+        lower.contains('cause') ||
+        lower.contains('identif') ||
+        lower.contains('look like') ||
+        lower.contains('why') ||
+        lower.contains('spot') ||
+        lower.contains('yellow')) {
+      if (activeDiagnosis != null && activeDiagnosis.containsKey('class_name')) {
+        final disease = _formatClassName(activeDiagnosis['class_name']);
+        final symptoms = activeDiagnosis['symptoms'] ?? 'Concentric necrotic spots, chlorotic halos, and premature foliage senescence.';
+        return '**Pathological Diagnosis Profile: $disease:**\n'
+            '• **Key Foliar Symptoms:** $symptoms\n'
+            '• **Environmental Drivers:** High relative humidity (>80%) combined with leaf wetness and warm temperatures.\n'
+            '• **Progression:** Typically initiates on older lower leaves and progresses upward into the productive canopy.';
+      }
+    }
+
+    // 7. General Diagnosis Remediation (Active Diagnosis)
     if (activeDiagnosis != null && activeDiagnosis.containsKey('class_name')) {
-      final cName = activeDiagnosis['class_name'];
-      return '**Agronomic Remediation for $cName:**\n'
-          '• **Chemical Option:** Apply copper-based or systemic fungicides according to package directions.\n'
-          '• **Canopy Management:** Prune all diseased foliage immediately with sterilized shears.\n'
-          '• **Moisture Control:** Strictly avoid wetting foliage; rely on root-level drip lines.';
+      final disease = _formatClassName(activeDiagnosis['class_name']);
+      final chemical = activeDiagnosis['chemical_control'] ?? 'Apply copper-based or systemic fungicides.';
+      final cultural = activeDiagnosis['cultural_practices'] ?? 'Prune diseased foliage and water strictly at soil level.';
+      return '**Agronomic Management Plan for $disease:**\n'
+          '• **Chemical Intervention:** $chemical\n'
+          '• **Cultural Hygiene:** $cultural\n'
+          '• **Irrigation Guard:** Maintain root-zone drip irrigation to eliminate foliar splash.';
     }
 
+    // 8. General Agronomy Assistant Fallback
     return '**AgriSense Plant Health Assistant:**\n'
-        '• Check soil moisture on the live dashboard before adjusting watering schedules.\n'
-        '• Scan any foliage showing chlorosis or necrotic spotting with the Disease Scanner.\n'
-        '• Maintain consistent calcium availability through uniform irrigation to prevent physiological disorders.';
+        '• **Live Telemetry:** Monitor soil moisture, temperature, and humidity on the Telemetry tab.\n'
+        '• **Disease Scanner:** Take a clear photo of any discolored or spotted leaves for immediate pathology classification.\n'
+        '• **Consistent Irrigation:** Maintain 45%-65% soil moisture to prevent nutrient imbalances and fruit blossom end rot.';
+  }
+
+  String _formatClassName(dynamic rawName) {
+    if (rawName == null) return 'Tomato Crop';
+    final s = rawName.toString().replaceAll('Tomato___', '').replaceAll('_', ' ').trim();
+    return s
+        .split(' ')
+        .where((w) => w.isNotEmpty)
+        .map((w) => '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}')
+        .join(' ');
+  }
   }
 }

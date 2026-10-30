@@ -13,13 +13,15 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  int _lastMessageCount = 0;
+  bool _lastTyping = false;
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
+          duration: const Duration(milliseconds: 250),
           curve: Curves.easeOut,
         );
       }
@@ -36,11 +38,146 @@ class _ChatScreenState extends State<ChatScreen> {
     _scrollToBottom();
   }
 
+  List<InlineSpan> _parseInlineSpans(String text, TextStyle baseStyle, Color boldColor) {
+    final spans = <InlineSpan>[];
+    final regex = RegExp(r'\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`');
+    int lastEnd = 0;
+
+    for (final match in regex.allMatches(text)) {
+      if (match.start > lastEnd) {
+        spans.add(TextSpan(
+          text: text.substring(lastEnd, match.start),
+          style: baseStyle,
+        ));
+      }
+
+      if (match.group(1) != null) {
+        // Bold: **text**
+        spans.add(TextSpan(
+          text: match.group(1),
+          style: baseStyle.copyWith(
+            fontWeight: FontWeight.bold,
+            color: boldColor,
+          ),
+        ));
+      } else if (match.group(2) != null) {
+        // Italic: *text*
+        spans.add(TextSpan(
+          text: match.group(2),
+          style: baseStyle.copyWith(
+            fontStyle: FontStyle.italic,
+          ),
+        ));
+      } else if (match.group(3) != null) {
+        // Code: `code`
+        spans.add(TextSpan(
+          text: match.group(3),
+          style: baseStyle.copyWith(
+            fontFamily: 'monospace',
+            backgroundColor: Colors.black12,
+          ),
+        ));
+      }
+
+      lastEnd = match.end;
+    }
+
+    if (lastEnd < text.length) {
+      spans.add(TextSpan(
+        text: text.substring(lastEnd),
+        style: baseStyle,
+      ));
+    }
+
+    return spans;
+  }
+
+  Widget _buildMessageContent(String rawText, bool isUser) {
+    // Clean raw prefixes if any
+    final cleanText = rawText.replaceAll('Tomato___', '').replaceAll('___', ' ');
+    final lines = cleanText.split('\n');
+
+    final baseTextColor = isUser ? Colors.white : Colors.black87;
+    final boldTextColor = isUser ? Colors.white : Colors.black;
+    final bulletColor = isUser ? Colors.white70 : Colors.indigo.shade700;
+
+    final baseStyle = TextStyle(
+      color: baseTextColor,
+      fontSize: 14,
+      height: 1.4,
+    );
+
+    final List<Widget> widgets = [];
+
+    for (int i = 0; i < lines.length; i++) {
+      final line = lines[i].trim();
+      if (line.isEmpty) {
+        if (i > 0 && i < lines.length - 1) {
+          widgets.add(const SizedBox(height: 6));
+        }
+        continue;
+      }
+
+      final isBullet = line.startsWith('• ') || line.startsWith('- ') || line.startsWith('* ');
+      final lineBody = isBullet ? line.substring(2).trim() : line;
+      final spans = _parseInlineSpans(lineBody, baseStyle, boldTextColor);
+
+      if (isBullet) {
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.only(top: 2.0, bottom: 2.0, left: 4.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '• ',
+                  style: TextStyle(
+                    color: bulletColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    height: 1.4,
+                  ),
+                ),
+                Expanded(
+                  child: RichText(
+                    text: TextSpan(children: spans),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      } else {
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2.0),
+            child: RichText(
+              text: TextSpan(children: spans),
+            ),
+          ),
+        );
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: widgets,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final chat = context.watch<ChatProvider>();
     final diag = context.watch<DiagnosisProvider>();
     final activeDiag = diag.activeDiagnosis;
+
+    // Trigger auto-scroll on new message or typing state change
+    if (chat.messages.length != _lastMessageCount || chat.isTyping != _lastTyping) {
+      _lastMessageCount = chat.messages.length;
+      _lastTyping = chat.isTyping;
+      _scrollToBottom();
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -67,7 +204,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Context: ${(activeDiag['class_name'] as String).replaceAll('Tomato___', '')}',
+                      'Context: ${(activeDiag['class_name'] as String).replaceAll('Tomato___', '').replaceAll('_', ' ')}',
                       style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.indigo),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -80,7 +217,7 @@ class _ChatScreenState extends State<ChatScreen> {
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 16.0),
               itemCount: chat.messages.length,
               itemBuilder: (context, index) {
                 final msg = chat.messages[index];
@@ -89,7 +226,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   child: Container(
                     margin: const EdgeInsets.symmetric(vertical: 4.0),
                     padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
-                    constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
+                    constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.82),
                     decoration: BoxDecoration(
                       color: msg.isUser ? Colors.indigo.shade600 : Colors.grey.shade200,
                       borderRadius: BorderRadius.circular(16).copyWith(
@@ -100,14 +237,8 @@ class _ChatScreenState extends State<ChatScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          msg.text,
-                          style: TextStyle(
-                            color: msg.isUser ? Colors.white : Colors.black87,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
+                        _buildMessageContent(msg.text, msg.isUser),
+                        const SizedBox(height: 6),
                         Align(
                           alignment: Alignment.bottomRight,
                           child: Text(
