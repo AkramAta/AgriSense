@@ -6,34 +6,32 @@ AgriSense is an enterprise-grade IoT precision agriculture and plant pathology p
 
 ```
 +-----------------------------------------------------------------------------------+
-|                                 EDGE HARDWARE TIER                                |
+|                           FIELD IOT HARDWARE TIER                                 |
 |                                                                                   |
-|  +---------------------------+                    +----------------------------+  |
-|  | ESP32 Irrigation Node     |                    | ESP32-CAM Vision Node      |  |
-|  | - DHT11 (Temp / Humidity) |                    | - OV2640 Image Sensor      |  |
-|  | - Analog Soil Moisture    |                    | - 250 KB PSRAM Tensor Arena|  |
-|  | - Relay & Solenoid Pump   |                    | - TFLite Micro INT8 Engine |  |
-|  | - Failsafe State Machine  |                    | - Embedded WebServer       |  |
-|  | - Embedded WebServer      |                    |   (Port 80: /latest)       |  |
-|  |   (Port 80: /sensors)     |                    |                            |  |
-|  +-------------+-------------+                    +-------------+--------------+  |
-+----------------|------------------------------------------------|-----------------+
-                 |                                                |
-                 | Local Wi-Fi (HTTP REST / JSON)                 |
-                 +-----------------------+------------------------+
+|  +-----------------------------------------------------------------------------+  |
+|  | ESP32 Smart Irrigation Node                                                 |  |
+|  | - DHT11 (Ambient Temperature & Humidity Sensing)                           |  |
+|  | - Capacitive Analog Soil Moisture Probe (12-bit ADC1 Channel)               |  |
+|  | - Optocoupled Solid-State Relay & Solenoid Water Pump                       |  |
+|  | - Origin-Tracking Finite State Machine & Auto-Cutoff Safety Guard           |  |
+|  | - Embedded HTTP REST Server (Port 80: /sensors, /status, /pump/manual)      |  |
+|  +-------------------------------------+---------------------------------------+  |
++----------------------------------------|------------------------------------------+
                                          |
+                                         | Local Wi-Fi (HTTP REST / JSON)
                                          v
 +-----------------------------------------------------------------------------------+
-|                            CROSS-PLATFORM CLIENT TIER                             |
+|                        CROSS-PLATFORM MOBILE CLIENT TIER                          |
 |                                                                                   |
 |  +-----------------------------------------------------------------------------+  |
 |  | Flutter Multi-Platform Application (Android / iOS / Web)                     |  |
-|  | - Telemetry Dashboard & Live Moisture Gauges                                |  |
-|  | - Manual Relay Control & Origin-Tracking Auto-Cutoff Display                |  |
-|  | - Mobile Camera Capture & Photo Gallery Leaf Disease Scanner                |  |
-|  | - Cross-Platform History Storage (SQLite / Web IndexedDB)                   |  |
+|  | - Live Sensor Telemetry Dashboard & Moisture Calibration Gauges             |  |
+|  | - Manual Relay Control & Origin-Tracking Auto-Cutoff Safety Timer           |  |
+|  | - Smartphone Camera Photo Capture & Gallery Image Upload                    |  |
+|  | - Instant Plant Pathology Diagnosis & Comprehensive Treatment Rx            |  |
+|  | - Cross-Platform History Storage (SQLite on Mobile, IndexedDB on Web)       |  |
 |  | - Conversational AI Agronomist Chatbot                                      |  |
-|  | - Network Diagnostics & Latency Benchmark Engine                            |  |
+|  | - Device Connectivity & Network Benchmark Suite                             |  |
 |  +-------------------------------------+---------------------------------------+  |
 +----------------------------------------|------------------------------------------+
                                          |

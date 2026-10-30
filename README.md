@@ -51,20 +51,21 @@ AgriSense is an end-to-end intelligent precision agriculture platform combining 
 1. **Edge Intelligence & Quantization:**
    - 4-block compact CNN architecture (~61K parameters) trained on 8 tomato disease classes.
    - Post-training INT8 full integer quantization with representative calibration dataset (~70 KB footprint).
-   - Zero-dynamic-allocation inference on ESP32-CAM using a dedicated PSRAM tensor arena.
+   - Fast, low-latency edge and serverless inference using INT8 quantized tensors.
 
 2. **Failsafe Irrigation State Machine:**
    - Origin-tracking pump activation (`pumpStartedByAuto` flag).
    - Enforced maximum run duration auto-shutoff safety timer prevents water overflow.
    - Decoupled threshold math (`irrigation_logic.h`) thoroughly validated via host-side unit tests.
 
-3. **Cloud & Edge Dual Inference:**
-   - Local on-device diagnosis runs in sub-second offline environments.
-   - Cloud pipeline powered by AWS SAM (API Gateway, S3, SQS, DynamoDB, Lambda) with Gemini Vision multimodal fallback.
+3. **Cloud & Serverless AI Inference:**
+   - Serverless event-driven pipeline powered by AWS SAM (API Gateway, S3, SQS, DynamoDB, Lambda) with LiteRT INT8 runtime.
+   - Multimodal Gemini Vision fallback and contextual agronomic advice.
 
 4. **Multi-Platform Mobile Application:**
-   - Live telemetry dashboard and irrigation controls.
-   - Dual-mode disease scanner (ESP32-CAM fetch or device camera/gallery).
+   - Live telemetry dashboard and smart irrigation controls.
+   - Mobile camera photo capture and device gallery upload for leaf disease scanning.
+   - Actionable agronomic prescriptions (chemical sprays, organic controls, cultural practices).
    - Agronomic advice chatbot powered by Google Gemini.
    - Cross-platform persistence (SQLite on mobile, IndexedDB on web).
 

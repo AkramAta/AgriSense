@@ -46,7 +46,7 @@ class DiagnosisHistoryScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   const Text('No diagnosis records saved yet', style: TextStyle(fontSize: 16, color: Colors.grey)),
                   const SizedBox(height: 4),
-                  const Text('Scans from ESP32-CAM and Cloud AI will appear here.', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  const Text('Photos captured by your mobile camera or gallery will appear here.', style: TextStyle(fontSize: 12, color: Colors.grey)),
                 ],
               ),
             )

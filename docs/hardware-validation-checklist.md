@@ -65,18 +65,22 @@ Use this formal bench validation procedure prior to commissioning hardware nodes
 
 ---
 
-## Phase 5: ESP32-CAM Vision Node Validation
+## Phase 5: Mobile Camera Pathology Scanner & End-to-End Integration
 
-- [ ] **PSRAM Allocation:**
-  - Inspect serial output at boot.
-  - Verify message: `[AGRISENSE] PSRAM Detected! Total: 4194304 bytes`.
-  - Verify tensor arena allocation: `Allocated 250 KB Tensor Arena`.
-- [ ] **Camera Frame Grab:**
-  - Point camera at target leaf.
-  - Query `GET /latest`.
-  - Verify HTTP 200 response with `class_name`, `confidence` $> 0.0$, and `inference_time_ms` $< 150\text{ ms}$.
-- [ ] **End-to-End Mobile App Sync:**
+- [ ] **Mobile Camera Leaf Capture:**
+  - Open the AgriSense mobile app and navigate to the **Disease Scanner** screen.
+  - Tap **"Take Photo"**. Capture a clear image of a tomato leaf.
+  - Confirm photo displays in the live preview card.
+- [ ] **Photo Gallery Upload:**
+  - Tap **"Upload Photo"**. Select a leaf image from local photo storage.
+  - Confirm instant image preview rendering.
+- [ ] **Pathology Engine Analysis:**
+  - Confirm diagnosis result renders within seconds with:
+    - Condition badge (HEALTHY vs DISEASE DETECTED).
+    - Statistical confidence percentage.
+    - Full agronomic prescription (chemical sprays, organic options, cultural practices).
+- [ ] **End-to-End Irrigation Node Sync:**
   - Launch mobile application.
-  - Connect to nodes via Wi-Fi.
-  - Confirm live gauge updates every 2 seconds.
+  - Connect to ESP32 Irrigation Node via local Wi-Fi or simulator (`127.0.0.1:8080`).
+  - Confirm live telemetry updates every 2 seconds and relay switch control responds immediately.
 

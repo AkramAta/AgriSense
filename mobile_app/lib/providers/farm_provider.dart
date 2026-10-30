@@ -97,10 +97,6 @@ class FarmProvider extends ChangeNotifier {
   Future<void> testConnectivity() async {
     irrigationPingMs = await _esp32Service.pingDevice(irrigationHost);
     isConnectedIrrigation = (irrigationPingMs != null);
-
-    visionPingMs = await _esp32Service.pingDevice(visionHost);
-    isConnectedVision = (visionPingMs != null);
-
     notifyListeners();
   }
 

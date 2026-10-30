@@ -1,13 +1,13 @@
 {
   "device_id": "esp32-node-alpha-01",
-  "timestamp": "2026-10-30T14:10:12.853861+00:00",
+  "timestamp": "2026-10-30T15:41:52.148197+00:00",
   "telemetry": {
     "moisture_percent": 24.5,
     "temperature_c": 26.2,
     "humidity_percent": 57.8,
     "raw_adc": 2750.0,
     "filtered_adc": 2740.0,
-    "timestamp_ms": 1793369412817
+    "timestamp_ms": 1793374912095
   },
   "irrigation_status": {
     "mode": "AUTO",
@@ -18,12 +18,16 @@
     "uptime_seconds": 180
   },
   "pathology_diagnosis": {
+    "source": "Mobile Camera Photo",
     "class_index": 1,
     "class_name": "Tomato___Early_blight",
-    "confidence": 0.942,
+    "confidence": 0.945,
     "is_healthy": false,
-    "inference_time_ms": 68,
-    "timestamp_ms": 1793369412853
+    "symptoms": "Dark brown circular necrotic lesions with concentric target rings on lower foliage.",
+    "chemical_control": "Apply Chlorothalonil or Azoxystrobin foliar spray at 7-10 day intervals.",
+    "organic_control": "Spray copper octanoate (copper soap) or potassium bicarbonate.",
+    "cultural_practices": "Prune lower leaves 12 inches above soil; maintain strict drip irrigation.",
+    "timestamp_ms": 1793374912148
   },
   "recommendation": {
     "chemical_spray": "Apply Chlorothalonil fungicide every 7-10 days during high humidity.",

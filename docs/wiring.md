@@ -19,7 +19,10 @@ The ESP32 DevKit-C v4 orchestrates soil moisture sensing, climate monitoring, an
 
 ---
 
-## 2. ESP32-CAM AI-Thinker Vision Node Pinout
+## 2. Optional / Reference Vision Node Pinout (ESP32-CAM)
+
+> [!NOTE]
+> In the production AgriSense architecture, plant disease scanning is handled directly through the smartphone camera in the mobile application. The ESP32-CAM pinout below is provided as an embedded edge reference design for standalone microcontroller vision experiments.
 
 The ESP32-CAM interfaces with an OmniVision OV2640 2-Megapixel image sensor over DVP (Digital Video Port).
 

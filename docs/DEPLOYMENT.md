@@ -36,22 +36,8 @@ Ensure the following tools are installed on your workstation:
    [AGRISENSE] Irrigation Node Ready
    ```
 
-### Step 2.2: Flash Vision Node (ESP32-CAM)
-
-1. Connect ESP32-CAM via an FTDI USB-to-UART adapter (ensure GPIO 0 is shorted to GND for flashing).
-2. Ensure `firmware/vision_node/model_data.h` is present (generated via `python ml/scripts/convert_tflite.py`).
-3. Compile and upload:
-   ```bash
-   arduino-cli compile --fqbn esp32:esp32:esp32cam firmware/vision_node
-   arduino-cli upload -p COM4 --fqbn esp32:esp32:esp32cam firmware/vision_node
-   ```
-4. Remove the GPIO 0 jumper, press the RESET button, and verify the boot logs:
-   ```
-   [AGRISENSE] Booting ESP32-CAM Vision Node...
-   [AGRISENSE] PSRAM Detected! Total: 4194304 bytes
-   [AGRISENSE] TFLite Micro ready!
-   [AGRISENSE] Vision Node Ready
-   ```
+> [!NOTE]
+> Plant leaf pathology inspection is performed directly via the user's mobile device camera or photo gallery in the Flutter application. An external ESP32-CAM board is no longer required in the field. (The `firmware/vision_node/` codebase remains available as a standalone reference design for embedded edge vision experiments).
 
 ---
 
