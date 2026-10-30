@@ -11,20 +11,17 @@ class NetworkDiagnosticScreen extends StatefulWidget {
 
 class _NetworkDiagnosticScreenState extends State<NetworkDiagnosticScreen> {
   late TextEditingController _irrigationController;
-  late TextEditingController _visionController;
 
   @override
   void initState() {
     super.initState();
     final farm = context.read<FarmProvider>();
     _irrigationController = TextEditingController(text: farm.irrigationHost);
-    _visionController = TextEditingController(text: farm.visionHost);
   }
 
   @override
   void dispose() {
     _irrigationController.dispose();
-    _visionController.dispose();
     super.dispose();
   }
 
@@ -56,11 +53,10 @@ class _NetworkDiagnosticScreenState extends State<NetworkDiagnosticScreen> {
                           onPressed: () {
                             setState(() {
                               _irrigationController.text = '127.0.0.1:8080';
-                              _visionController.text = '127.0.0.1:8081';
                             });
-                            farm.updateHosts(irrigation: '127.0.0.1:8080', vision: '127.0.0.1:8081');
+                            farm.updateHosts(irrigation: '127.0.0.1:8080');
                           },
-                          child: const Text('Simulator (Local)'),
+                          child: const Text('Simulator (127.0.0.1:8080)'),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -69,11 +65,10 @@ class _NetworkDiagnosticScreenState extends State<NetworkDiagnosticScreen> {
                           onPressed: () {
                             setState(() {
                               _irrigationController.text = '192.168.4.1';
-                              _visionController.text = '192.168.4.2';
                             });
-                            farm.updateHosts(irrigation: '192.168.4.1', vision: '192.168.4.2');
+                            farm.updateHosts(irrigation: '192.168.4.1');
                           },
-                          child: const Text('ESP32 Soft AP'),
+                          child: const Text('ESP32 Soft AP (192.168.4.1)'),
                         ),
                       ),
                     ],
@@ -92,28 +87,17 @@ class _NetworkDiagnosticScreenState extends State<NetworkDiagnosticScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Network Endpoints', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  const Text('ESP32 Irrigation Node Endpoint', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   const SizedBox(height: 16),
                   TextField(
                     controller: _irrigationController,
                     decoration: const InputDecoration(
-                      labelText: 'ESP32 Irrigation Node Host:Port',
+                      labelText: 'ESP32 Node IP / Host:Port',
                       hintText: 'e.g. 192.168.1.100 or 127.0.0.1:8080',
                       prefixIcon: Icon(Icons.router),
                       border: OutlineInputBorder(),
                     ),
                     onChanged: (val) => farm.updateHosts(irrigation: val),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _visionController,
-                    decoration: const InputDecoration(
-                      labelText: 'ESP32-CAM Vision Node Host:Port',
-                      hintText: 'e.g. 192.168.1.101 or 127.0.0.1:8081',
-                      prefixIcon: Icon(Icons.videocam),
-                      border: OutlineInputBorder(),
-                    ),
-                    onChanged: (val) => farm.updateHosts(vision: val),
                   ),
                   const SizedBox(height: 16),
                   SizedBox(
@@ -125,7 +109,7 @@ class _NetworkDiagnosticScreenState extends State<NetworkDiagnosticScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                       icon: const Icon(Icons.network_check),
-                      label: const Text('Test Network Connectivity'),
+                      label: const Text('Test Connection & Latency'),
                       onPressed: () => farm.testConnectivity(),
                     ),
                   ),
@@ -151,7 +135,7 @@ class _NetworkDiagnosticScreenState extends State<NetworkDiagnosticScreen> {
                       farm.isConnectedIrrigation ? Icons.check_circle : Icons.cancel,
                       color: farm.isConnectedIrrigation ? Colors.green : Colors.red,
                     ),
-                    title: const Text('Irrigation Node Ping'),
+                    title: const Text('ESP32 Irrigation Node Ping'),
                     subtitle: Text(farm.irrigationHost),
                     trailing: Text(
                       farm.irrigationPingMs != null ? '${farm.irrigationPingMs} ms' : 'Offline',
@@ -162,20 +146,14 @@ class _NetworkDiagnosticScreenState extends State<NetworkDiagnosticScreen> {
                     ),
                   ),
                   const Divider(),
-                  ListTile(
+                  const ListTile(
                     contentPadding: EdgeInsets.zero,
-                    leading: Icon(
-                      farm.isConnectedVision ? Icons.check_circle : Icons.cancel,
-                      color: farm.isConnectedVision ? Colors.green : Colors.red,
-                    ),
-                    title: const Text('Vision Node Ping'),
-                    subtitle: Text(farm.visionHost),
-                    trailing: Text(
-                      farm.visionPingMs != null ? '${farm.visionPingMs} ms' : 'Offline',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: farm.isConnectedVision ? Colors.green : Colors.red,
-                      ),
+                    leading: Icon(Icons.smartphone, color: Colors.blue),
+                    title: Text('Leaf Pathology Scanner'),
+                    subtitle: Text('Mobile Device Camera & Photo Gallery'),
+                    trailing: Chip(
+                      label: Text('ACTIVE', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                      backgroundColor: Colors.blue,
                     ),
                   ),
                 ],
@@ -187,4 +165,3 @@ class _NetworkDiagnosticScreenState extends State<NetworkDiagnosticScreen> {
     );
   }
 }
-

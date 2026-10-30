@@ -1,8 +1,7 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../providers/diagnosis_provider.dart';
-import '../providers/farm_provider.dart';
 import 'chat_screen.dart';
 
 class DiseaseDiagnosisScreen extends StatelessWidget {
@@ -11,7 +10,6 @@ class DiseaseDiagnosisScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final diag = context.watch<DiagnosisProvider>();
-    final farm = context.watch<FarmProvider>();
     final active = diag.activeDiagnosis;
     final isHealthy = active?['is_healthy'] == true;
     final className = active?['class_name'] as String? ?? 'No Active Scan';
@@ -21,11 +19,19 @@ class DiseaseDiagnosisScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Disease Scanner'),
+        actions: [
+          if (active != null)
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              tooltip: 'New Scan',
+              onPressed: () => diag.clearActiveDiagnosis(),
+            ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
-          // Action Buttons: ESP32-CAM vs Cloud AI
+          // Mobile Camera & Gallery Capture Controls
           Row(
             children: [
               Expanded(
@@ -34,12 +40,13 @@ class DiseaseDiagnosisScreen extends StatelessWidget {
                     backgroundColor: Colors.teal.shade700,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   icon: const Icon(Icons.camera_alt),
-                  label: const Text('Fetch ESP32-CAM'),
+                  label: const Text('Take Photo', style: TextStyle(fontWeight: FontWeight.bold)),
                   onPressed: diag.isLoading
                       ? null
-                      : () => diag.fetchFromEsp32Cam(farm.visionHost),
+                      : () => diag.pickAndDiagnose(ImageSource.camera),
                 ),
               ),
               const SizedBox(width: 12),
@@ -49,23 +56,76 @@ class DiseaseDiagnosisScreen extends StatelessWidget {
                     backgroundColor: Colors.indigo.shade700,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  icon: const Icon(Icons.cloud_upload),
-                  label: const Text('Cloud AI Scan'),
+                  icon: const Icon(Icons.photo_library),
+                  label: const Text('Upload Photo', style: TextStyle(fontWeight: FontWeight.bold)),
                   onPressed: diag.isLoading
                       ? null
-                      : () {
-                          // Synthetic representative image bytes for instant cloud diagnosis
-                          final dummyBytes = Uint8List.fromList(List.filled(1024, 42));
-                          diag.diagnoseWithGemini(dummyBytes);
-                        },
+                      : () => diag.pickAndDiagnose(ImageSource.gallery),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
 
-          // Loading Indicator
+          // Leaf Image Preview Card
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            clipBehavior: Clip.antiAlias,
+            elevation: 2,
+            child: diag.selectedImageBytes != null
+                ? Column(
+                    children: [
+                      Image.memory(
+                        diag.selectedImageBytes!,
+                        height: 220,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              diag.selectedImageName ?? 'Captured Leaf Photo',
+                              style: const TextStyle(fontSize: 12, color: Colors.grey),
+                            ),
+                            Text(
+                              'Source: $source',
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.indigo),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  )
+                : Container(
+                    height: 160,
+                    width: double.infinity,
+                    color: Colors.grey.shade100,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.add_a_photo_outlined, size: 48, color: Colors.grey.shade400),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'No leaf image selected',
+                          style: TextStyle(fontWeight: FontWeight.w600, color: Colors.black54),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Take a photo with your mobile camera or upload from gallery',
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                        ),
+                      ],
+                    ),
+                  ),
+          ),
+          const SizedBox(height: 16),
+
+          // Loading Progress
           if (diag.isLoading)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 24.0),
@@ -74,7 +134,7 @@ class DiseaseDiagnosisScreen extends StatelessWidget {
                   children: [
                     CircularProgressIndicator(),
                     SizedBox(height: 12),
-                    Text('Analyzing foliar pathology with TFLite / AI...'),
+                    Text('Analyzing foliar pathology with Plant AI...'),
                   ],
                 ),
               ),
@@ -84,13 +144,25 @@ class DiseaseDiagnosisScreen extends StatelessWidget {
           if (diag.errorMessage != null)
             Card(
               color: Colors.red.shade50,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: Colors.red.shade300),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(12.0),
-                child: Text(diag.errorMessage!, style: TextStyle(color: Colors.red.shade800)),
+                child: Row(
+                  children: [
+                    Icon(Icons.error_outline, color: Colors.red.shade700),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(diag.errorMessage!, style: TextStyle(color: Colors.red.shade900)),
+                    ),
+                  ],
+                ),
               ),
             ),
 
-          // Active Diagnosis Card
+          // Active Pathology Diagnosis Card
           if (active != null && !diag.isLoading)
             Card(
               elevation: 3,
@@ -131,27 +203,30 @@ class DiseaseDiagnosisScreen extends StatelessWidget {
                       style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 4),
-                    Text('Source: $source', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                    Text(
+                      'Scanned: ${active['timestamp'] ?? ''} • Via $source',
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    ),
                     const Divider(height: 24),
 
                     // Treatment Prescription
                     if (!isHealthy) ...[
                       const Text('Agronomic Prescription', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 10),
                       if (active.containsKey('symptoms')) ...[
                         const Text('Symptoms:', style: TextStyle(fontWeight: FontWeight.w600)),
                         Text(active['symptoms'] ?? '', style: TextStyle(color: Colors.grey.shade800)),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 8),
                       ],
                       if (active.containsKey('chemical_control')) ...[
                         const Text('Chemical Spray Control:', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.blue)),
                         Text(active['chemical_control'] ?? '', style: TextStyle(color: Colors.grey.shade800)),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 8),
                       ],
                       if (active.containsKey('organic_control')) ...[
                         const Text('Organic Remediation:', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.green)),
                         Text(active['organic_control'] ?? '', style: TextStyle(color: Colors.grey.shade800)),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 8),
                       ],
                       if (active.containsKey('cultural_practices')) ...[
                         const Text('Cultural & Irrigation Practices:', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.indigo)),
@@ -177,7 +252,7 @@ class DiseaseDiagnosisScreen extends StatelessWidget {
                       ),
                     ] else ...[
                       const Text(
-                        'No pathology detected! Foliar tissue exhibits vibrant chlorophyl with healthy photosynthetic margins.',
+                        'No foliar pathology detected! The leaf tissue exhibits healthy chlorophyl pigmentation with intact margins.',
                         style: TextStyle(color: Colors.green),
                       ),
                     ],
@@ -190,4 +265,3 @@ class DiseaseDiagnosisScreen extends StatelessWidget {
     );
   }
 }
-

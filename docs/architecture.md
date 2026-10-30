@@ -30,7 +30,7 @@ AgriSense is an enterprise-grade IoT precision agriculture and plant pathology p
 |  | Flutter Multi-Platform Application (Android / iOS / Web)                     |  |
 |  | - Telemetry Dashboard & Live Moisture Gauges                                |  |
 |  | - Manual Relay Control & Origin-Tracking Auto-Cutoff Display                |  |
-|  | - Dual-Mode Disease Scanner (Local ESP32-CAM Sync / Cloud AI Fallback)      |  |
+|  | - Mobile Camera Capture & Photo Gallery Leaf Disease Scanner                |  |
 |  | - Cross-Platform History Storage (SQLite / Web IndexedDB)                   |  |
 |  | - Conversational AI Agronomist Chatbot                                      |  |
 |  | - Network Diagnostics & Latency Benchmark Engine                            |  |

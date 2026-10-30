@@ -1,27 +1,29 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
-import '../services/esp32_service.dart';
 import '../services/gemini_service.dart';
 import '../services/storage_service.dart';
 
 class DiagnosisProvider extends ChangeNotifier {
-  final Esp32Service _esp32Service;
   final GeminiService _geminiService;
   final StorageService _storageService;
+  final ImagePicker _imagePicker;
 
   bool isLoading = false;
   String? errorMessage;
+  Uint8List? selectedImageBytes;
+  String? selectedImageName;
   Map<String, dynamic>? activeDiagnosis;
   List<DiagnosisHistoryItem> history = [];
 
   DiagnosisProvider({
-    Esp32Service? esp32Service,
     GeminiService? geminiService,
     StorageService? storageService,
-  })  : _esp32Service = esp32Service ?? Esp32Service(),
-        _geminiService = geminiService ?? GeminiService(),
-        _storageService = storageService ?? StorageService() {
+    ImagePicker? imagePicker,
+  })  : _geminiService = geminiService ?? GeminiService(),
+        _storageService = storageService ?? StorageService(),
+        _imagePicker = imagePicker ?? ImagePicker() {
     loadHistory();
   }
 
@@ -30,48 +32,32 @@ class DiagnosisProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Triggers diagnosis fetch from the physical ESP32-CAM over local Wi-Fi.
-  Future<void> fetchFromEsp32Cam(String visionHost) async {
-    isLoading = true;
-    errorMessage = null;
-    notifyListeners();
-
+  /// Captures photo via Mobile Camera or selects from Device Gallery, then analyzes it.
+  Future<void> pickAndDiagnose(ImageSource source) async {
     try {
-      final diag = await _esp32Service.getLatestDiagnosis(visionHost);
-      final nowFormatted = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
+      final picked = await _imagePicker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+      if (picked == null) return; // User cancelled
 
-      final diagnosisMap = {
-        'class_name': diag.className,
-        'confidence': diag.confidence,
-        'is_healthy': diag.isHealthy,
-        'source': 'ESP32-CAM (On-Device TFLite)',
-        'inference_time_ms': diag.inferenceTimeMs,
-        'timestamp': nowFormatted,
-      };
+      final bytes = await picked.readAsBytes();
+      selectedImageBytes = bytes;
+      selectedImageName = picked.name;
+      notifyListeners();
 
-      activeDiagnosis = diagnosisMap;
-
-      // Persist to local SQLite / Web IndexedDB
-      await _storageService.insertDiagnosis(DiagnosisHistoryItem(
-        className: diag.className,
-        confidence: diag.confidence,
-        isHealthy: diag.isHealthy,
-        source: 'ESP32-CAM',
-        treatmentSummary: diag.isHealthy ? 'Healthy foliage' : 'Foliar infection detected',
-        createdAt: nowFormatted,
-      ));
-
-      await loadHistory();
+      final sourceLabel = (source == ImageSource.camera) ? 'Mobile Camera' : 'Gallery Upload';
+      await diagnoseWithGemini(bytes, sourceLabel: sourceLabel);
     } catch (e) {
-      errorMessage = 'ESP32-CAM diagnosis failed: ${e.toString()}';
-    } finally {
-      isLoading = false;
+      errorMessage = 'Failed to capture or select image: ${e.toString()}';
       notifyListeners();
     }
   }
 
-  /// Analyzes image bytes from gallery/camera via Gemini Vision.
-  Future<void> diagnoseWithGemini(Uint8List imageBytes) async {
+  /// Analyzes image bytes directly via Gemini Vision / Plant Pathology AI.
+  Future<void> diagnoseWithGemini(Uint8List imageBytes, {String sourceLabel = 'Mobile Camera'}) async {
     isLoading = true;
     errorMessage = null;
     notifyListeners();
@@ -80,7 +66,7 @@ class DiagnosisProvider extends ChangeNotifier {
       final result = await _geminiService.diagnoseLeafImage(imageBytes);
       final nowFormatted = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
 
-      result['source'] = 'Cloud AI (Gemini Vision)';
+      result['source'] = sourceLabel;
       result['timestamp'] = nowFormatted;
       activeDiagnosis = result;
 
@@ -89,22 +75,31 @@ class DiagnosisProvider extends ChangeNotifier {
       final isHealthy = result['is_healthy'] == true;
       final treatment = result['chemical_control'] as String? ?? '';
 
+      // Persist to local database (SQLite on Mobile, IndexedDB on Web)
       await _storageService.insertDiagnosis(DiagnosisHistoryItem(
         className: className,
         confidence: confidence,
         isHealthy: isHealthy,
-        source: 'Cloud Gemini',
+        source: sourceLabel,
         treatmentSummary: treatment,
         createdAt: nowFormatted,
       ));
 
       await loadHistory();
     } catch (e) {
-      errorMessage = 'Gemini diagnosis failed: ${e.toString()}';
+      errorMessage = 'Plant pathology analysis failed: ${e.toString()}';
     } finally {
       isLoading = false;
       notifyListeners();
     }
+  }
+
+  void clearActiveDiagnosis() {
+    activeDiagnosis = null;
+    selectedImageBytes = null;
+    selectedImageName = null;
+    errorMessage = null;
+    notifyListeners();
   }
 
   Future<void> deleteHistoryItem(int id) async {

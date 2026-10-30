@@ -34,8 +34,8 @@ void main() {
     await tester.tap(find.text('Scanner'));
     await tester.pumpAndSettle();
     expect(find.text('Disease Scanner'), findsOneWidget);
-    expect(find.text('Fetch ESP32-CAM'), findsOneWidget);
-    expect(find.text('Cloud AI Scan'), findsOneWidget);
+    expect(find.text('Take Photo'), findsOneWidget);
+    expect(find.text('Upload Photo'), findsOneWidget);
 
     // Tap on AI Chat Tab
     await tester.tap(find.text('AI Chat'));
