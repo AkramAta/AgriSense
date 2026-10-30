@@ -7,22 +7,14 @@ AgriSense is an end-to-end intelligent precision agriculture platform combining 
 ## System Architecture Overview
 
 ```
-                                +---------------------------+
-                                |  ESP32-CAM (Vision Node)  |
-                                |  - 96x96 RGB capture      |
-                                |  - TFLite Micro INT8      |
-                                |  - PSRAM Tensor Arena     |
-                                +-------------+-------------+
-                                              | Local REST / Wi-Fi
-                                              v
-+-------------------------------+       +-----+-----+       +---------------------------+
-| ESP32 (Irrigation Node)       |<=====>|  Flutter  |<=====>| AWS Serverless Backend    |
-| - DHT11 (Temp/Humidity)       |       |  Mobile   |       | - API Gateway (HTTP REST) |
-| - Capacitive Soil Moisture    |       |    App    |       | - S3 (Plant Image Store)  |
-| - Relay & Solenoid / Pump     |       |           |       | - SQS (Async Inference)   |
-| - FSM & Auto-Cutoff Safety    |       |           |       | - DynamoDB (Audit Log)    |
-| - Local HTTP REST API         |       |           |       | - Gemini Cloud AI Q&A     |
-+-------------------------------+       +-----------+       +---------------------------+
++-------------------------------+       +-----------------------------------+       +---------------------------+
+| ESP32 (Irrigation Node)       |<=====>|  Flutter Mobile Application       |<=====>| AWS Serverless Backend    |
+| - DHT11 (Temp/Humidity)       |       |  - Live Soil & Climate Telemetry  |       | - API Gateway (HTTP REST) |
+| - Capacitive Soil Moisture    |       |  - Manual & Auto Pump Controls    |       | - S3 (Plant Image Store)  |
+| - Relay & Solenoid / Pump     |       |  - Mobile Camera Photo Capture    |       | - SQS (Async Inference)   |
+| - FSM & Auto-Cutoff Safety    |       |  - Photo Gallery Leaf Upload      |       | - DynamoDB (Audit Log)    |
+| - Local HTTP REST API (Port 80|       |  - AI Plant Pathology & Rx        |       | - Gemini Cloud AI Q&A     |
++-------------------------------+       +-----------------------------------+       +---------------------------+
 ```
 
 ---
