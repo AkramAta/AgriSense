@@ -93,7 +93,58 @@ class IrrigationLogicSimulator:
             return True
 
 
+TOMATO_CLASSES = [
+    "Tomato___Bacterial_spot",
+    "Tomato___Early_blight",
+    "Tomato___Late_blight",
+    "Tomato___Leaf_Mold",
+    "Tomato___Septoria_leaf_spot",
+    "Tomato___Spider_mites_Two_spotted_spider_mite",
+    "Tomato___Target_Spot",
+    "Tomato___healthy",
+]
+
+
+def decode_rgb565(high_byte: int, low_byte: int):
+    pixel = (high_byte << 8) | low_byte
+    r5 = (pixel >> 11) & 0x1F
+    g6 = (pixel >> 5) & 0x3F
+    b5 = pixel & 0x1F
+    r = int((r5 * 527 + 23) >> 6)
+    g = int((g6 * 259 + 33) >> 6)
+    b = int((b5 * 527 + 23) >> 6)
+    return r, g, b
+
+
+def test_vision_logic():
+    print("==================================================")
+    print("Testing Vision Logic (RGB565 & INT8 Quantization)")
+    print("==================================================")
+    # 1. RGB565 Pure Red (0xF800)
+    r, g, b = decode_rgb565(0xF8, 0x00)
+    assert r >= 250 and g == 0 and b == 0, f"Red failed: {r},{g},{b}"
+    print("  [PASS] Pure Red RGB565 decoding")
+
+    # 2. RGB565 Pure Green (0x07E0)
+    r, g, b = decode_rgb565(0x07, 0xE0)
+    assert r == 0 and g >= 250 and b == 0, f"Green failed: {r},{g},{b}"
+    print("  [PASS] Pure Green RGB565 decoding")
+
+    # 3. Output dequantization
+    logits = [-128, -128, -128, -100, 100, -128, -128, -128]
+    scale = 1.0 / 256.0
+    zero_point = -128
+    probs = [(val - zero_point) * scale for val in logits]
+    top_idx = probs.index(max(probs))
+    conf = probs[top_idx]
+    assert top_idx == 4, f"Expected top index 4, got {top_idx}"
+    assert conf > 0.85, f"Expected conf > 0.85, got {conf}"
+    assert TOMATO_CLASSES[top_idx] == "Tomato___Septoria_leaf_spot"
+    print(f"  [PASS] INT8 Dequantization (Top: {TOMATO_CLASSES[top_idx]}, conf={conf:.3f})")
+
+
 def run_unit_tests():
+    test_vision_logic()
     print("==================================================")
     print("Testing Irrigation Pure Logic & State Machine")
     print("==================================================")
