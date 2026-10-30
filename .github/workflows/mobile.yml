@@ -1,0 +1,54 @@
+name: Mobile App CI
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'mobile_app/**'
+      - '.github/workflows/mobile.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'mobile_app/**'
+      - '.github/workflows/mobile.yml'
+
+jobs:
+  flutter-test-and-build:
+    name: Flutter Analyze, Test & Web Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Verify Flutter Installation
+        run: flutter doctor -v
+
+      - name: Install Flutter Dependencies
+        working-directory: mobile_app
+        run: flutter pub get
+
+      - name: Analyze Flutter Code
+        working-directory: mobile_app
+        run: flutter analyze
+
+      - name: Run Flutter Tests
+        working-directory: mobile_app
+        run: flutter test --coverage
+
+      - name: Build Flutter Web Release
+        working-directory: mobile_app
+        run: flutter build web --release
+
