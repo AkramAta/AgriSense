@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "author": "AgriSense Core Engineering",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "board-esp32-devkit-c-v4",
+      "id": "esp",
+      "top": 0,
+      "left": 0,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-dht11",
+      "id": "dht",
+      "top": -80,
+      "left": 180,
+      "attrs": { "temperature": "24.5", "humidity": "58" }
+    },
+    {
+      "type": "wokwi-potentiometer",
+      "id": "soil_sensor",
+      "top": 120,
+      "left": -180,
+      "attrs": { "value": "2200" }
+    },
+    {
+      "type": "wokwi-relay-module",
+      "id": "relay",
+      "top": 120,
+      "left": 180,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-led",
+      "id": "pump_led",
+      "top": 240,
+      "left": 200,
+      "attrs": { "color": "blue", "label": "PUMP" }
+    }
+  ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+    [ "esp:3V3", "dht:VCC", "red", [ "v0" ] ],
+    [ "esp:GND.1", "dht:GND", "black", [ "v0" ] ],
+    [ "esp:4", "dht:SDA", "green", [ "v0" ] ],
+    [ "esp:3V3", "soil_sensor:1", "red", [ "h-20" ] ],
+    [ "esp:GND.2", "soil_sensor:3", "black", [ "h-20" ] ],
+    [ "esp:34", "soil_sensor:2", "yellow", [ "h-40" ] ],
+    [ "esp:5V", "relay:VCC", "red", [ "h20" ] ],
+    [ "esp:GND.3", "relay:GND", "black", [ "h20" ] ],
+    [ "esp:26", "relay:IN", "blue", [ "h40" ] ],
+    [ "relay:NO", "pump_led:A", "green", [ "v20" ] ],
+    [ "esp:GND.3", "pump_led:C", "black", [ "v40" ] ]
+  ],
+  "dependencies": {}
+}
