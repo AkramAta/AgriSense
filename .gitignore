@@ -1,0 +1,79 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+dist/
+eggs/
+parts/
+var/
+sdist/
+develop-eggs/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# AWS SAM
+.aws-sam/
+
+# C / C++ / Embedded
+*.o
+*.obj
+*.elf
+*.bin
+*.hex
+*.d
+*.a
+*.la
+*.lai
+*.so
+*.dylib
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# Arduino
+*.ino.hex
+*.ino.elf
+*.ino.bin
+
+# Flutter & Dart
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+build/
+android/app/debug/
+android/app/profile/
+android/app/release/
+ios/Pods/
+ios/.symlinks/
+*.lock
+
+# ML Large Datasets & Raw Downloads
+ml/dataset/raw/
+*.tar.gz
+*.zip
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# IDEs and Editors
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+*.sublime-project
+*.sublime-workspace
