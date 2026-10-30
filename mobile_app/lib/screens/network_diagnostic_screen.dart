@@ -187,3 +187,4 @@ class _NetworkDiagnosticScreenState extends State<NetworkDiagnosticScreen> {
     );
   }
 }
+

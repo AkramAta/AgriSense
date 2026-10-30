@@ -67,3 +67,4 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
   }
 }
+

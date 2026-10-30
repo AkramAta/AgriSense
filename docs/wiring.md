@@ -87,3 +87,4 @@ $$\text{Moisture} (\%) = \left( \frac{\text{ADC}_{\text{dry}} - \text{ADC}_{\tex
 - **Completely Dry Air ($\text{ADC}_{\text{dry}}$):** ~3,200 (at 12-bit resolution: 0 - 4,095)
 - **Saturated Water ($\text{ADC}_{\text{wet}}$):** ~1,400
 - **Optimal Tomato Root Zone:** 2,000 - 2,450 ADC (40% - 65% moisture)
+

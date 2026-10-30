@@ -190,3 +190,4 @@ class DiseaseDiagnosisScreen extends StatelessWidget {
     );
   }
 }
+

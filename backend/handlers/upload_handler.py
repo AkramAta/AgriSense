@@ -111,3 +111,4 @@ def lambda_handler(event, context):
 
     except Exception as e:
         return format_error(500, f"Failed to initialize diagnostic upload: {str(e)}")
+

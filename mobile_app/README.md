@@ -6,3 +6,4 @@ Cross-platform Flutter application providing:
 - Offline-capable diagnosis history with SQLite / IndexedDB persistence.
 - Plant health diagnostic chatbot powered by Google Gemini.
 - Protocol simulator for rapid offline development in `tool/esp32_simulator.dart`.
+

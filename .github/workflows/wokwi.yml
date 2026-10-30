@@ -45,3 +45,4 @@ jobs:
           timeout: 20000
           expect_text: '[AGRISENSE] Irrigation Node Ready'
         continue-on-error: true
+

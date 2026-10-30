@@ -79,3 +79,4 @@ Use this formal bench validation procedure prior to commissioning hardware nodes
   - Launch mobile application.
   - Connect to nodes via Wi-Fi.
   - Confirm live gauge updates every 2 seconds.
+

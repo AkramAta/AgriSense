@@ -136,3 +136,4 @@ def lambda_handler(event, context):
         "model": "agrisense-expert-rules-v1",
         "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
     })
+

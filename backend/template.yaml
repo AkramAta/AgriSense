@@ -179,3 +179,4 @@ Outputs:
   TableName:
     Description: DynamoDB Diagnostics Table
     Value: !Ref DiagnosesTable
+

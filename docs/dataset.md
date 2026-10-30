@@ -69,3 +69,4 @@ To enable zero-dynamic-allocation execution on the ESP32-CAM and fast CPU evalua
 - **Original FP32 Size:** ~245 KB
 - **Quantized INT8 TFLite Model:** ~64.8 KB (73.5% footprint reduction)
 - **PSRAM Working Arena:** ~250 KB
+

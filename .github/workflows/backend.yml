@@ -43,3 +43,4 @@ jobs:
           AWS_SESSION_TOKEN: testing
         run: |
           pytest backend/tests/ -v --tb=short
+

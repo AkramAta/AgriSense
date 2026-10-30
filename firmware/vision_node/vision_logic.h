@@ -113,3 +113,4 @@ inline bool isPredictionHealthy(uint8_t classIndex) {
 } // namespace agrisense
 
 #endif // VISION_LOGIC_H_
+

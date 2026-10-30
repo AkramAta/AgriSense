@@ -51,3 +51,4 @@ jobs:
       - name: Build Flutter Web Release
         working-directory: mobile_app
         run: flutter build web --release
+

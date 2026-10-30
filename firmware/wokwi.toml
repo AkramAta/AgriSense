@@ -3,3 +3,4 @@ version = 1
 firmware = "build/irrigation_node.bin"
 elf = "build/irrigation_node.elf"
 diagram = "diagram.json"
+

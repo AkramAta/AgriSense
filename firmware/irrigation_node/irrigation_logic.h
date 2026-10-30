@@ -186,3 +186,4 @@ inline void resetSafetyTrip(IrrigationState& state) {
 } // namespace agrisense
 
 #endif // IRRIGATION_LOGIC_H_
+

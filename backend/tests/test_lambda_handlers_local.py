@@ -277,3 +277,4 @@ def test_end_to_end_serverless_pipeline(setup_aws_resources):
     chat_data = json.loads(chat_res["body"])
     assert "reply" in chat_data
     assert len(chat_data["reply"]) > 50
+

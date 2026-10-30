@@ -112,3 +112,4 @@ class DiagnosisHistoryScreen extends StatelessWidget {
     );
   }
 }
+

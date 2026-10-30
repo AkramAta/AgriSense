@@ -6,3 +6,4 @@ Engineering documentation and validation resources:
 - `dataset.md`: Class distribution, preprocessing pipeline, and normalization values.
 - `DEPLOYMENT.md`: Step-by-step instructions for firmware flashing, AWS SAM deploy, and Flutter release.
 - `hardware-validation-checklist.md`: Bench testing protocol and safety checklists.
+

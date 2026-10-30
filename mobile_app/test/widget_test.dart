@@ -43,3 +43,4 @@ void main() {
     expect(find.text('AI Agronomist Chat'), findsOneWidget);
   });
 }
+

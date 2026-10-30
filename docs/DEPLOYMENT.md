@@ -111,3 +111,4 @@ flutter build web --release
 - **Microcontroller Isolation:** Place IoT nodes on an isolated 2.4 GHz VLAN / IoT SSID.
 - **IAM Least Privilege:** Lambda execution roles are strictly locked to single S3 buckets, SQS queues, and DynamoDB tables.
 - **S3 Presigned URLs:** Raw image uploads use presigned PUT URLs with a 15-minute maximum expiration window, preventing unauthenticated uploads.
+

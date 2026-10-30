@@ -288,3 +288,4 @@ class SensorDashboardScreen extends StatelessWidget {
     );
   }
 }
+

@@ -137,3 +137,4 @@ The ESP32-CAM runs an INT8 quantized 4-block CNN (~61K parameters) on raw 96x96 
   tensor_arena = (uint8_t*)heap_caps_malloc(kTensorArenaSize, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
   ```
 - **Zero Allocation Inference:** Once `AllocateTensors()` completes, no dynamic heap allocations occur during inference, eliminating fragmentation and memory leaks during continuous field operation.
+

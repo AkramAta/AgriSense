@@ -5,3 +5,4 @@ Contains dataset curation, model training, INT8 quantization, and C array conver
 - `scripts/train.py`: 4-block compact CNN architecture with data augmentation.
 - `scripts/convert_tflite.py`: Post-training INT8 quantization and C-array (`model_data.h`) generation.
 - `models/`: Exported `.tflite` model and `training_metadata.json`.
+

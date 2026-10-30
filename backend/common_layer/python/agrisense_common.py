@@ -134,3 +134,4 @@ def format_error(status_code: int, message: str, details: Optional[Dict[str, Any
     if details:
         payload["details"] = details
     return format_response(status_code, payload)
+

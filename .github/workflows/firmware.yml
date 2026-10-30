@@ -53,3 +53,4 @@ jobs:
       - name: Compile Irrigation Node Sketch
         run: |
           arduino-cli compile --fqbn esp32:esp32:esp32 firmware/irrigation_node
+
