@@ -29,7 +29,7 @@ class GeminiService {
         );
 
         final base64Image = base64Encode(imageBytes);
-        final prompt =
+        const prompt =
             'You are an expert plant pathologist. Analyze this tomato leaf photo. '
             'Identify if it is healthy or affected by a disease (such as Bacterial Spot, Early Blight, '
             'Late Blight, Leaf Mold, Septoria Leaf Spot, Spider Mites, or Target Spot). '
@@ -97,7 +97,7 @@ class GeminiService {
           'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$key',
         );
 
-        final systemPrompt =
+        const systemPrompt =
             'You are AgriSense AI, a specialist agronomy and plant pathology consultant. '
             'Provide direct, actionable, scientifically-backed recommendations for tomato crop health, '
             'irrigation management, and pest/disease remediation.';

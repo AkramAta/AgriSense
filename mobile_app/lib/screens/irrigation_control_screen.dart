@@ -175,7 +175,7 @@ class IrrigationControlScreen extends StatelessWidget {
                         color: isPumpOn ? Colors.blue.shade600 : Colors.grey.shade200,
                         boxShadow: [
                           BoxShadow(
-                            color: isPumpOn ? Colors.blue.withOpacity(0.4) : Colors.black12,
+                            color: isPumpOn ? Colors.blue.withAlpha(102) : Colors.black12,
                             blurRadius: 16,
                             spreadRadius: 4,
                           ),

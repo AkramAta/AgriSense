@@ -52,6 +52,7 @@ ENV/
 .pub-cache/
 .pub/
 build/
+**/.flutter-plugins*
 android/app/debug/
 android/app/profile/
 android/app/release/
