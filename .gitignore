@@ -60,6 +60,8 @@ ios/.symlinks/
 *.lock
 
 # ML Large Datasets & Raw Downloads
+ml/dataset/train/
+ml/dataset/val/
 ml/dataset/raw/
 *.tar.gz
 *.zip

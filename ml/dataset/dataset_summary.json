@@ -1,0 +1,54 @@
+{
+  "total_classes": 8,
+  "classes": [
+    "Tomato___Bacterial_spot",
+    "Tomato___Early_blight",
+    "Tomato___Late_blight",
+    "Tomato___Leaf_Mold",
+    "Tomato___Septoria_leaf_spot",
+    "Tomato___Spider_mites_Two_spotted_spider_mite",
+    "Tomato___Target_Spot",
+    "Tomato___healthy"
+  ],
+  "train_samples_per_class": 32,
+  "val_samples_per_class": 8,
+  "image_size": [
+    96,
+    96,
+    3
+  ],
+  "distribution": {
+    "Tomato___Bacterial_spot": {
+      "train": 32,
+      "val": 8
+    },
+    "Tomato___Early_blight": {
+      "train": 32,
+      "val": 8
+    },
+    "Tomato___Late_blight": {
+      "train": 32,
+      "val": 8
+    },
+    "Tomato___Leaf_Mold": {
+      "train": 32,
+      "val": 8
+    },
+    "Tomato___Septoria_leaf_spot": {
+      "train": 32,
+      "val": 8
+    },
+    "Tomato___Spider_mites_Two_spotted_spider_mite": {
+      "train": 32,
+      "val": 8
+    },
+    "Tomato___Target_Spot": {
+      "train": 32,
+      "val": 8
+    },
+    "Tomato___healthy": {
+      "train": 32,
+      "val": 8
+    }
+  }
+}

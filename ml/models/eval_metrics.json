@@ -1,0 +1,166 @@
+{
+  "overall_accuracy": 0.5,
+  "macro_f1": 0.3708,
+  "total_test_samples": 64,
+  "confusion_matrix": [
+    [
+      0,
+      0,
+      0,
+      8,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      8,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      8,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      8,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      8,
+      0,
+      0,
+      0
+    ],
+    [
+      4,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      4
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      8,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      8
+    ]
+  ],
+  "per_class": {
+    "Tomato___Bacterial_spot": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0,
+      "support": 8
+    },
+    "Tomato___Early_blight": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0,
+      "support": 8
+    },
+    "Tomato___Late_blight": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0,
+      "support": 8
+    },
+    "Tomato___Leaf_Mold": {
+      "precision": 0.3333,
+      "recall": 1.0,
+      "f1_score": 0.5,
+      "support": 8
+    },
+    "Tomato___Septoria_leaf_spot": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "support": 8
+    },
+    "Tomato___Spider_mites_Two_spotted_spider_mite": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0,
+      "support": 8
+    },
+    "Tomato___Target_Spot": {
+      "precision": 0.5,
+      "recall": 1.0,
+      "f1_score": 0.6667,
+      "support": 8
+    },
+    "Tomato___healthy": {
+      "precision": 0.6667,
+      "recall": 1.0,
+      "f1_score": 0.8,
+      "support": 8
+    }
+  },
+  "classes": [
+    "Tomato___Bacterial_spot",
+    "Tomato___Early_blight",
+    "Tomato___Late_blight",
+    "Tomato___Leaf_Mold",
+    "Tomato___Septoria_leaf_spot",
+    "Tomato___Spider_mites_Two_spotted_spider_mite",
+    "Tomato___Target_Spot",
+    "Tomato___healthy"
+  ],
+  "parameter_count": 61032,
+  "history": {
+    "train_loss": [
+      2.0311,
+      1.8488,
+      1.6726
+    ],
+    "val_loss": [
+      1.9172,
+      1.6555,
+      1.5427
+    ],
+    "val_acc": [
+      0.125,
+      0.5,
+      0.5
+    ]
+  },
+  "best_weights_path": "ml\\models\\tomato_cnn.pt"
+}

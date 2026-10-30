@@ -1,0 +1,39 @@
+{
+  "model_name": "AgriSense-Tomato-CNN-4Block",
+  "architecture": "4x(Conv2D+ReLU+MaxPool2D) -> AvgPool2D -> FC -> Softmax",
+  "parameter_count": 61032,
+  "input_tensor": {
+    "name": "input",
+    "shape": [
+      1,
+      96,
+      96,
+      3
+    ],
+    "dtype": "int8",
+    "scale": 0.00392156862745098,
+    "zero_point": -128
+  },
+  "output_tensor": {
+    "name": "Identity",
+    "shape": [
+      1,
+      8
+    ],
+    "dtype": "int8",
+    "scale": 0.00390625,
+    "zero_point": -128
+  },
+  "classes": [
+    "Tomato___Bacterial_spot",
+    "Tomato___Early_blight",
+    "Tomato___Late_blight",
+    "Tomato___Leaf_Mold",
+    "Tomato___Septoria_leaf_spot",
+    "Tomato___Spider_mites_Two_spotted_spider_mite",
+    "Tomato___Target_Spot",
+    "Tomato___healthy"
+  ],
+  "quantization_type": "full_int8",
+  "file_size_bytes": 64848
+}
