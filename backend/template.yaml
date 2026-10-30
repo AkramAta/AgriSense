@@ -1,0 +1,181 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: AgriSense - Serverless Plant Disease Detection Backend (AWS SAM)
+
+Parameters:
+  StageName:
+    Type: String
+    Default: prod
+    Description: Deployment stage environment
+  GeminiApiKey:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: Google Gemini API key for conversational agronomic advice
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 512
+    Runtime: python3.12
+    Environment:
+      Variables:
+        STAGE: !Ref StageName
+        BUCKET_NAME: !Ref PlantImagesBucket
+        QUEUE_URL: !Ref InferenceQueue
+        TABLE_NAME: !Ref DiagnosesTable
+        GEMINI_API_KEY: !Ref GeminiApiKey
+        MODEL_PATH: "/opt/model_quant_int8.tflite"
+
+Resources:
+  # S3 Bucket for Raw Plant Image Uploads
+  PlantImagesBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "agrisense-plant-images-${AWS::AccountId}-${AWS::Region}"
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ['*']
+            AllowedMethods: [GET, PUT, POST, HEAD]
+            AllowedOrigins: ['*']
+            MaxAge: 3600
+
+  # SQS Queue for Asynchronous Inference Decoupling
+  InferenceQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "agrisense-inference-queue-${StageName}"
+      VisibilityTimeout: 60
+      MessageRetentionPeriod: 86400
+
+  # DynamoDB Table for Audit Logs and Diagnostic Records
+  DiagnosesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "agrisense-diagnoses-${StageName}"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: job_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: job_id
+          KeyType: HASH
+
+  # Shared Lambda Layer for Response Formatters and Utilities
+  AgriSenseCommonLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub "agrisense-common-layer-${StageName}"
+      Description: AgriSense shared formatters, recommendations, and utilities
+      ContentUri: common_layer/
+      CompatibleRuntimes:
+        - python3.12
+      RetentionPolicy: Retain
+
+  # API Gateway
+  AgriSenseApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref StageName
+      Cors:
+        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+        AllowOrigin: "'*'"
+
+  # Lambda 1: Upload Presign Handler
+  UploadFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "agrisense-upload-handler-${StageName}"
+      CodeUri: .
+      Handler: handlers.upload_handler.lambda_handler
+      Layers:
+        - !Ref AgriSenseCommonLayer
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref PlantImagesBucket
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt InferenceQueue.QueueName
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DiagnosesTable
+      Events:
+        PresignApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AgriSenseApi
+            Path: /upload/presign
+            Method: POST
+
+  # Lambda 2: Async SQS Inference Processor
+  InferenceFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "agrisense-inference-handler-${StageName}"
+      CodeUri: .
+      Handler: handlers.inference_handler.lambda_handler
+      Timeout: 60
+      MemorySize: 1024
+      Layers:
+        - !Ref AgriSenseCommonLayer
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref PlantImagesBucket
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DiagnosesTable
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt InferenceQueue.Arn
+            BatchSize: 1
+
+  # Lambda 3: Results Query Handler
+  ResultsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "agrisense-results-handler-${StageName}"
+      CodeUri: .
+      Handler: handlers.results_handler.lambda_handler
+      Layers:
+        - !Ref AgriSenseCommonLayer
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref DiagnosesTable
+      Events:
+        ResultsApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AgriSenseApi
+            Path: /diagnosis/{job_id}
+            Method: GET
+
+  # Lambda 4: Gemini Plant-Care Chatbot
+  ChatFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "agrisense-chat-handler-${StageName}"
+      CodeUri: .
+      Handler: handlers.chat_handler.lambda_handler
+      Layers:
+        - !Ref AgriSenseCommonLayer
+      Events:
+        ChatApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AgriSenseApi
+            Path: /chat
+            Method: POST
+
+Outputs:
+  ApiEndpoint:
+    Description: Base URL for AgriSense REST API Gateway
+    Value: !Sub "https://${AgriSenseApi}.execute-api.${AWS::Region}.amazonaws.com/${StageName}/"
+  BucketName:
+    Description: S3 Storage Bucket
+    Value: !Ref PlantImagesBucket
+  QueueUrl:
+    Description: SQS Inference Queue URL
+    Value: !Ref InferenceQueue
+  TableName:
+    Description: DynamoDB Diagnostics Table
+    Value: !Ref DiagnosesTable
