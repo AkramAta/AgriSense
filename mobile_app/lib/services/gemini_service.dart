@@ -19,7 +19,8 @@ class GeminiService {
   bool get hasApiKey => _apiKey.isNotEmpty;
 
   /// Multimodal leaf disease diagnosis using Gemini Vision.
-  Future<Map<String, dynamic>> diagnoseLeafImage(Uint8List imageBytes, {String? apiKey}) async {
+  Future<Map<String, dynamic>> diagnoseLeafImage(Uint8List imageBytes,
+      {String? apiKey}) async {
     final key = apiKey?.trim().isNotEmpty == true ? apiKey!.trim() : _apiKey;
 
     if (key.isNotEmpty) {
@@ -57,15 +58,18 @@ class GeminiService {
           }
         };
 
-        final response = await _client.post(
-          url,
-          headers: {'Content-Type': 'application/json'},
-          body: json.encode(payload),
-        ).timeout(const Duration(seconds: 15));
+        final response = await _client
+            .post(
+              url,
+              headers: {'Content-Type': 'application/json'},
+              body: json.encode(payload),
+            )
+            .timeout(const Duration(seconds: 15));
 
         if (response.statusCode == 200) {
           final resData = json.decode(response.body);
-          final text = resData['candidates'][0]['content']['parts'][0]['text'] as String;
+          final text =
+              resData['candidates'][0]['content']['parts'][0]['text'] as String;
           // Extract JSON block if wrapped in markdown backticks
           final cleanJson = text.replaceAll(RegExp(r'```json|```'), '').trim();
           return json.decode(cleanJson) as Map<String, dynamic>;
@@ -80,15 +84,20 @@ class GeminiService {
       'class_name': 'Tomato___Early_blight',
       'confidence': 0.935,
       'is_healthy': false,
-      'symptoms': 'Brown circular lesions with concentric target rings on lower foliage accompanied by chlorotic halos.',
-      'chemical_control': 'Apply chlorothalonil or azoxystrobin foliar spray at 7-10 day intervals during humid weather.',
-      'organic_control': 'Spray copper octanoate (copper soap) or potassium bicarbonate. Mulch soil to prevent rain splash.',
-      'cultural_practices': 'Prune lower leaves 12 inches above ground; water strictly at soil level using drip irrigation.',
+      'symptoms':
+          'Brown circular lesions with concentric target rings on lower foliage accompanied by chlorotic halos.',
+      'chemical_control':
+          'Apply chlorothalonil or azoxystrobin foliar spray at 7-10 day intervals during humid weather.',
+      'organic_control':
+          'Spray copper octanoate (copper soap) or potassium bicarbonate. Mulch soil to prevent rain splash.',
+      'cultural_practices':
+          'Prune lower leaves 12 inches above ground; water strictly at soil level using drip irrigation.',
     };
   }
 
   /// Sends conversational agronomy queries to Gemini.
-  Future<String> sendChatMessage(String prompt, {Map<String, dynamic>? activeDiagnosis, String? apiKey}) async {
+  Future<String> sendChatMessage(String prompt,
+      {Map<String, dynamic>? activeDiagnosis, String? apiKey}) async {
     final key = apiKey?.trim().isNotEmpty == true ? apiKey!.trim() : _apiKey;
 
     if (key.isNotEmpty) {
@@ -108,11 +117,15 @@ class GeminiService {
 
         final payload = {
           'systemInstruction': {
-            'parts': [{'text': systemPrompt}]
+            'parts': [
+              {'text': systemPrompt}
+            ]
           },
           'contents': [
             {
-              'parts': [{'text': '$prompt$contextPart'}]
+              'parts': [
+                {'text': '$prompt$contextPart'}
+              ]
             }
           ],
           'generationConfig': {
@@ -121,15 +134,18 @@ class GeminiService {
           }
         };
 
-        final response = await _client.post(
-          url,
-          headers: {'Content-Type': 'application/json'},
-          body: json.encode(payload),
-        ).timeout(const Duration(seconds: 12));
+        final response = await _client
+            .post(
+              url,
+              headers: {'Content-Type': 'application/json'},
+              body: json.encode(payload),
+            )
+            .timeout(const Duration(seconds: 12));
 
         if (response.statusCode == 200) {
           final resData = json.decode(response.body);
-          return resData['candidates'][0]['content']['parts'][0]['text'] as String;
+          return resData['candidates'][0]['content']['parts'][0]['text']
+              as String;
         }
       } catch (_) {
         // Fallback below
@@ -150,7 +166,8 @@ class GeminiService {
         lower.contains('good afternoon') ||
         lower.contains('good evening') ||
         lower == 'greetings') {
-      if (activeDiagnosis != null && activeDiagnosis.containsKey('class_name')) {
+      if (activeDiagnosis != null &&
+          activeDiagnosis.containsKey('class_name')) {
         final disease = _formatClassName(activeDiagnosis['class_name']);
         return 'Hello! I am your AgriSense AI Agronomist. I see you recently diagnosed **$disease** on your tomato foliage.\n\n'
             'How can I help you today? You can ask about recommended fungicide sprays, organic treatments, pruning techniques, or irrigation adjustments.';
@@ -160,13 +177,22 @@ class GeminiService {
     }
 
     // 2. Expressions of Gratitude
-    if (lower.contains('thank') || lower.contains('appreciate') || lower == 'ok' || lower == 'okay' || lower == 'got it') {
+    if (lower.contains('thank') ||
+        lower.contains('appreciate') ||
+        lower == 'ok' ||
+        lower == 'okay' ||
+        lower == 'got it') {
       return 'You\'re very welcome! Keep a close eye on your soil moisture levels and inspect your foliage regularly. Feel free to ask anytime if you need more agronomic advice.';
     }
 
     // 3. Irrigation, Soil Moisture, Watering
-    if (lower.contains('water') || lower.contains('irrigation') || lower.contains('moisture') || lower.contains('pump') || lower.contains('schedule')) {
-      if (activeDiagnosis != null && activeDiagnosis.containsKey('class_name')) {
+    if (lower.contains('water') ||
+        lower.contains('irrigation') ||
+        lower.contains('moisture') ||
+        lower.contains('pump') ||
+        lower.contains('schedule')) {
+      if (activeDiagnosis != null &&
+          activeDiagnosis.containsKey('class_name')) {
         final disease = _formatClassName(activeDiagnosis['class_name']);
         return '**Irrigation Directive for $disease Management:**\n'
             '• **Strict Foliage Dryness:** Avoid overhead sprinkler irrigation entirely; wetting the canopy promotes spore germination.\n'
@@ -191,9 +217,11 @@ class GeminiService {
         lower.contains('treat') ||
         lower.contains('cure') ||
         lower.contains('medicine')) {
-      if (activeDiagnosis != null && activeDiagnosis.containsKey('class_name')) {
+      if (activeDiagnosis != null &&
+          activeDiagnosis.containsKey('class_name')) {
         final disease = _formatClassName(activeDiagnosis['class_name']);
-        final chemical = activeDiagnosis['chemical_control'] ?? 'Apply chlorothalonil or copper-based protective fungicide.';
+        final chemical = activeDiagnosis['chemical_control'] ??
+            'Apply chlorothalonil or copper-based protective fungicide.';
         return '**Foliar Fungicide Protocol for $disease:**\n'
             '• **Recommended Spray:** $chemical\n'
             '• **Application Timing:** Spray early morning or late afternoon when wind speeds are under 8 km/h and temperatures are below 28°C.\n'
@@ -215,10 +243,13 @@ class GeminiService {
         lower.contains('neem') ||
         lower.contains('bicarbonate') ||
         lower.contains('prun')) {
-      if (activeDiagnosis != null && activeDiagnosis.containsKey('class_name')) {
+      if (activeDiagnosis != null &&
+          activeDiagnosis.containsKey('class_name')) {
         final disease = _formatClassName(activeDiagnosis['class_name']);
-        final organic = activeDiagnosis['organic_control'] ?? 'Spray copper soap or potassium bicarbonate.';
-        final cultural = activeDiagnosis['cultural_practices'] ?? 'Prune lower leaves 12 inches above ground; mulch soil to stop splashback.';
+        final organic = activeDiagnosis['organic_control'] ??
+            'Spray copper soap or potassium bicarbonate.';
+        final cultural = activeDiagnosis['cultural_practices'] ??
+            'Prune lower leaves 12 inches above ground; mulch soil to stop splashback.';
         return '**Organic & Cultural Remediation for $disease:**\n'
             '• **Organic Spray:** $organic\n'
             '• **Canopy Aeration:** $cultural\n'
@@ -240,9 +271,11 @@ class GeminiService {
         lower.contains('why') ||
         lower.contains('spot') ||
         lower.contains('yellow')) {
-      if (activeDiagnosis != null && activeDiagnosis.containsKey('class_name')) {
+      if (activeDiagnosis != null &&
+          activeDiagnosis.containsKey('class_name')) {
         final disease = _formatClassName(activeDiagnosis['class_name']);
-        final symptoms = activeDiagnosis['symptoms'] ?? 'Concentric necrotic spots, chlorotic halos, and premature foliage senescence.';
+        final symptoms = activeDiagnosis['symptoms'] ??
+            'Concentric necrotic spots, chlorotic halos, and premature foliage senescence.';
         return '**Pathological Diagnosis Profile: $disease:**\n'
             '• **Key Foliar Symptoms:** $symptoms\n'
             '• **Environmental Drivers:** High relative humidity (>80%) combined with leaf wetness and warm temperatures.\n'
@@ -253,8 +286,10 @@ class GeminiService {
     // 7. General Diagnosis Remediation (Active Diagnosis)
     if (activeDiagnosis != null && activeDiagnosis.containsKey('class_name')) {
       final disease = _formatClassName(activeDiagnosis['class_name']);
-      final chemical = activeDiagnosis['chemical_control'] ?? 'Apply copper-based or systemic fungicides.';
-      final cultural = activeDiagnosis['cultural_practices'] ?? 'Prune diseased foliage and water strictly at soil level.';
+      final chemical = activeDiagnosis['chemical_control'] ??
+          'Apply copper-based or systemic fungicides.';
+      final cultural = activeDiagnosis['cultural_practices'] ??
+          'Prune diseased foliage and water strictly at soil level.';
       return '**Agronomic Management Plan for $disease:**\n'
           '• **Chemical Intervention:** $chemical\n'
           '• **Cultural Hygiene:** $cultural\n'
@@ -270,12 +305,15 @@ class GeminiService {
 
   String _formatClassName(dynamic rawName) {
     if (rawName == null) return 'Tomato Crop';
-    final s = rawName.toString().replaceAll('Tomato___', '').replaceAll('_', ' ').trim();
+    final s = rawName
+        .toString()
+        .replaceAll('Tomato___', '')
+        .replaceAll('_', ' ')
+        .trim();
     return s
         .split(' ')
         .where((w) => w.isNotEmpty)
         .map((w) => '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}')
         .join(' ');
-  }
   }
 }

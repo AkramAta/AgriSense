@@ -1,0 +1,443 @@
+#!/usr/bin/env python3
+"""
+Generates the AgriSense Tomato Disease Detection Jupyter Notebook.
+Creates both ml/notebooks/tomato_disease_detection.ipynb and ml/tomato_disease_detection.ipynb.
+"""
+
+import json
+from pathlib import Path
+
+notebook = {
+    "cells": [
+        {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [
+                "# 🌿 AgriSense: Tomato Foliar Pathology CNN\n",
+                "### Compact 4-Block Convolutional Neural Network for Edge, Mobile & Serverless Inference\n",
+                "\n",
+                "This notebook provides the complete, interactive machine learning pipeline for the **AgriSense** smart agriculture project:\n",
+                "1. **Exploratory Data Analysis (EDA):** Overview of the 8 tomato pathology classes from PlantVillage.\n",
+                "2. **Data Transforms & Augmentation:** Invariance against variable field and greenhouse lighting.\n",
+                "3. **Architecture Definition:** The custom **AgriSenseTomatoCNN** (4 Conv-ReLU-Pool blocks + GAP, 61,032 parameters).\n",
+                "4. **Layer-by-Layer Verification:** Validating feature map dimensions and parameter counts.\n",
+                "5. **Training & Optimization:** CrossEntropyLoss, Adam optimizer, and learning rate scheduling.\n",
+                "6. **Evaluation & Diagnostics:** Accuracy, precision, recall, and per-class metrics.\n",
+                "7. **INT8 Quantization:** Post-training quantization to INT8 TFLite (~64 KB).\n",
+                "8. **Edge C Array Generation:** Exporting `model_data.h` for ESP32 microcontroller firmware."
+            ]
+        },
+        {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [
+                "## 1. Environment Setup & Device Selection"
+            ]
+        },
+        {
+            "cell_type": "code",
+            "execution_count": None,
+            "metadata": {},
+            "outputs": [],
+            "source": [
+                "import os\n",
+                "import sys\n",
+                "import json\n",
+                "import time\n",
+                "from pathlib import Path\n",
+                "from typing import List, Tuple\n",
+                "\n",
+                "import numpy as np\n",
+                "import matplotlib.pyplot as plt\n",
+                "from PIL import Image\n",
+                "\n",
+                "import torch\n",
+                "import torch.nn as nn\n",
+                "import torch.optim as optim\n",
+                "from torch.utils.data import DataLoader\n",
+                "from torchvision import datasets, transforms\n",
+                "\n",
+                "# Set seeds for reproducibility\n",
+                "torch.manual_seed(42)\n",
+                "np.random.seed(42)\n",
+                "\n",
+                "device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')\n",
+                "print(f'PyTorch Version: {torch.__version__}')\n",
+                "print(f'Computation Device: {device}')"
+            ]
+        },
+        {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [
+                "## 2. Dataset Definition (8 Tomato Classes)\n",
+                "We classify 7 foliar diseases and healthy leaves from the PlantVillage dataset."
+            ]
+        },
+        {
+            "cell_type": "code",
+            "execution_count": None,
+            "metadata": {},
+            "outputs": [],
+            "source": [
+                "CLASS_NAMES = [\n",
+                "    'Tomato___Bacterial_spot',\n",
+                "    'Tomato___Early_blight',\n",
+                "    'Tomato___Late_blight',\n",
+                "    'Tomato___Leaf_Mold',\n",
+                "    'Tomato___Septoria_leaf_spot',\n",
+                "    'Tomato___Spider_mites_Two_spotted_spider_mite',\n",
+                "    'Tomato___Target_Spot',\n",
+                "    'Tomato___healthy',\n",
+                "]\n",
+                "\n",
+                "HUMAN_LABELS = [\n",
+                "    'Bacterial Spot',\n",
+                "    'Early Blight',\n",
+                "    'Late Blight',\n",
+                "    'Leaf Mold',\n",
+                "    'Septoria Leaf Spot',\n",
+                "    'Spider Mites',\n",
+                "    'Target Spot',\n",
+                "    'Healthy Foliage',\n",
+                "]\n",
+                "\n",
+                "# Search for dataset directory\n",
+                "dataset_candidates = [Path('../dataset'), Path('dataset'), Path('ml/dataset')]\n",
+                "DATASET_DIR = next((p for p in dataset_candidates if p.exists()), Path('dataset'))\n",
+                "print(f'Dataset Path: {DATASET_DIR.resolve()}')"
+            ]
+        },
+        {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [
+                "## 3. Data Augmentation & Normalization Pipeline\n",
+                "- Resolution: **96x96 RGB** for ultra-low memory usage.\n",
+                "- Augmentations: Random flips, rotations, and color jitter.\n",
+                "- Normalization: ImageNet mean and std."
+            ]
+        },
+        {
+            "cell_type": "code",
+            "execution_count": None,
+            "metadata": {},
+            "outputs": [],
+            "source": [
+                "IMAGE_SIZE = 96\n",
+                "BATCH_SIZE = 16\n",
+                "\n",
+                "train_transform = transforms.Compose([\n",
+                "    transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)),\n",
+                "    transforms.RandomHorizontalFlip(p=0.5),\n",
+                "    transforms.RandomVerticalFlip(p=0.2),\n",
+                "    transforms.RandomRotation(degrees=15),\n",
+                "    transforms.ColorJitter(brightness=0.15, contrast=0.15, saturation=0.15),\n",
+                "    transforms.ToTensor(),\n",
+                "    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),\n",
+                "])\n",
+                "\n",
+                "val_transform = transforms.Compose([\n",
+                "    transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)),\n",
+                "    transforms.ToTensor(),\n",
+                "    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),\n",
+                "])\n",
+                "\n",
+                "train_dir = DATASET_DIR / 'train'\n",
+                "val_dir = DATASET_DIR / 'val'\n",
+                "\n",
+                "if train_dir.exists() and val_dir.exists():\n",
+                "    train_dataset = datasets.ImageFolder(str(train_dir), transform=train_transform)\n",
+                "    val_dataset = datasets.ImageFolder(str(val_dir), transform=val_transform)\n",
+                "    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)\n",
+                "    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)\n",
+                "    print(f'Train samples: {len(train_dataset)}, Validation samples: {len(val_dataset)}')\n",
+                "else:\n",
+                "    print('Dataset directory not populated yet. Run ml/scripts/download_dataset.py.')"
+            ]
+        },
+        {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [
+                "## 4. CNN Architecture Definition (`AgriSenseTomatoCNN`)\n",
+                "The core neural network module for leaf pathology classification."
+            ]
+        },
+        {
+            "cell_type": "code",
+            "execution_count": None,
+            "metadata": {},
+            "outputs": [],
+            "source": [
+                "class AgriSenseTomatoCNN(nn.Module):\n",
+                "    \"\"\"\n",
+                "    Compact 4-Block Convolutional Neural Network.\n",
+                "    Parameter budget: 61,032 (~61K parameters).\n",
+                "    \"\"\"\n",
+                "    def __init__(self, num_classes: int = 8):\n",
+                "        super().__init__()\n",
+                "        # Block 1: (3, 96, 96) -> (16, 48, 48) [448 params]\n",
+                "        self.block1 = nn.Sequential(\n",
+                "            nn.Conv2d(3, 16, kernel_size=3, stride=1, padding=1),\n",
+                "            nn.ReLU(inplace=True),\n",
+                "            nn.MaxPool2d(kernel_size=2, stride=2),\n",
+                "        )\n",
+                "        # Block 2: (16, 48, 48) -> (32, 24, 24) [4,640 params]\n",
+                "        self.block2 = nn.Sequential(\n",
+                "            nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=1),\n",
+                "            nn.ReLU(inplace=True),\n",
+                "            nn.MaxPool2d(kernel_size=2, stride=2),\n",
+                "        )\n",
+                "        # Block 3: (32, 24, 24) -> (64, 12, 12) [18,496 params]\n",
+                "        self.block3 = nn.Sequential(\n",
+                "            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),\n",
+                "            nn.ReLU(inplace=True),\n",
+                "            nn.MaxPool2d(kernel_size=2, stride=2),\n",
+                "        )\n",
+                "        # Block 4: (64, 12, 12) -> (64, 6, 6) [36,928 params]\n",
+                "        self.block4 = nn.Sequential(\n",
+                "            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),\n",
+                "            nn.ReLU(inplace=True),\n",
+                "            nn.MaxPool2d(kernel_size=2, stride=2),\n",
+                "        )\n",
+                "        # Global Average Pooling + Classifier (64 -> 8) [520 params]\n",
+                "        self.gap = nn.AdaptiveAvgPool2d((1, 1))\n",
+                "        self.classifier = nn.Linear(64, num_classes)\n",
+                "\n",
+                "    def forward(self, x: torch.Tensor) -> torch.Tensor:\n",
+                "        x = self.block1(x)\n",
+                "        x = self.block2(x)\n",
+                "        x = self.block3(x)\n",
+                "        x = self.block4(x)\n",
+                "        x = self.gap(x)\n",
+                "        x = torch.flatten(x, 1)\n",
+                "        x = self.classifier(x)\n",
+                "        return x\n",
+                "\n",
+                "model = AgriSenseTomatoCNN(num_classes=8).to(device)\n",
+                "total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)\n",
+                "print(f'Model initialized. Total Trainable Parameters: {total_params:,} (Exactly 61,032)')"
+            ]
+        },
+        {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [
+                "## 5. Layer-by-Layer Architectural Breakdown\n",
+                "Verifying tensor shapes through each stage."
+            ]
+        },
+        {
+            "cell_type": "code",
+            "execution_count": None,
+            "metadata": {},
+            "outputs": [],
+            "source": [
+                "print('=' * 75)\n",
+                "print(f\"{'Layer / Stage':<28} {'Output Shape':<25} {'Param Count':<12}\")\n",
+                "print('-' * 75)\n",
+                "dummy = torch.zeros(1, 3, 96, 96).to(device)\n",
+                "print(f\"{'Input Image':<28} {str(list(dummy.shape)):<25} {'0':<12}\")\n",
+                "\n",
+                "x = model.block1(dummy)\n",
+                "p1 = sum(p.numel() for p in model.block1.parameters())\n",
+                "print(f\"{'Block 1 (Conv16+ReLU+Pool)':<28} {str(list(x.shape)):<25} {p1:<12}\")\n",
+                "\n",
+                "x = model.block2(x)\n",
+                "p2 = sum(p.numel() for p in model.block2.parameters())\n",
+                "print(f\"{'Block 2 (Conv32+ReLU+Pool)':<28} {str(list(x.shape)):<25} {p2:<12}\")\n",
+                "\n",
+                "x = model.block3(x)\n",
+                "p3 = sum(p.numel() for p in model.block3.parameters())\n",
+                "print(f\"{'Block 3 (Conv64+ReLU+Pool)':<28} {str(list(x.shape)):<25} {p3:<12}\")\n",
+                "\n",
+                "x = model.block4(x)\n",
+                "p4 = sum(p.numel() for p in model.block4.parameters())\n",
+                "print(f\"{'Block 4 (Conv64+ReLU+Pool)':<28} {str(list(x.shape)):<25} {p4:<12}\")\n",
+                "\n",
+                "x = model.gap(x)\n",
+                "x = torch.flatten(x, 1)\n",
+                "print(f\"{'Global Average Pooling':<28} {str(list(x.shape)):<25} {'0':<12}\")\n",
+                "\n",
+                "out = model.classifier(x)\n",
+                "pc = sum(p.numel() for p in model.classifier.parameters())\n",
+                "print(f\"{'Dense Classifier':<28} {str(list(out.shape)):<25} {pc:<12}\")\n",
+                "print('=' * 75)\n",
+                "print(f'Total: {p1 + p2 + p3 + p4 + pc:,} parameters')"
+            ]
+        },
+        {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [
+                "## 6. Training & Validation Procedures"
+            ]
+        },
+        {
+            "cell_type": "code",
+            "execution_count": None,
+            "metadata": {},
+            "outputs": [],
+            "source": [
+                "criterion = nn.CrossEntropyLoss()\n",
+                "optimizer = optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-4)\n",
+                "scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.5)\n",
+                "\n",
+                "def train_epoch(model, loader, criterion, optimizer, device):\n",
+                "    model.train()\n",
+                "    total_loss, correct, total = 0.0, 0, 0\n",
+                "    for images, labels in loader:\n",
+                "        images, labels = images.to(device), labels.to(device)\n",
+                "        optimizer.zero_grad()\n",
+                "        outputs = model(images)\n",
+                "        loss = criterion(outputs, labels)\n",
+                "        loss.backward()\n",
+                "        optimizer.step()\n",
+                "        total_loss += loss.item() * images.size(0)\n",
+                "        _, preds = torch.max(outputs, 1)\n",
+                "        correct += (preds == labels).sum().item()\n",
+                "        total += labels.size(0)\n",
+                "    return total_loss / total, correct / total\n",
+                "\n",
+                "def eval_epoch(model, loader, criterion, device):\n",
+                "    model.eval()\n",
+                "    total_loss, correct, total = 0.0, 0, 0\n",
+                "    with torch.no_grad():\n",
+                "        for images, labels in loader:\n",
+                "            images, labels = images.to(device), labels.to(device)\n",
+                "            outputs = model(images)\n",
+                "            loss = criterion(outputs, labels)\n",
+                "            total_loss += loss.item() * images.size(0)\n",
+                "            _, preds = torch.max(outputs, 1)\n",
+                "            correct += (preds == labels).sum().item()\n",
+                "            total += labels.size(0)\n",
+                "    return total_loss / total, correct / total\n",
+                "\n",
+                "print('Training and evaluation functions compiled successfully.')"
+            ]
+        },
+        {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [
+                "## 7. Pre-trained Checkpoint & Validation Results"
+            ]
+        },
+        {
+            "cell_type": "code",
+            "execution_count": None,
+            "metadata": {},
+            "outputs": [],
+            "source": [
+                "weights_candidates = [Path('../models/tomato_cnn.pt'), Path('models/tomato_cnn.pt'), Path('ml/models/tomato_cnn.pt')]\n",
+                "weights_path = next((p for p in weights_candidates if p.exists()), None)\n",
+                "\n",
+                "if weights_path:\n",
+                "    state_dict = torch.load(str(weights_path), map_location=device)\n",
+                "    model.load_state_dict(state_dict)\n",
+                "    print(f'Loaded checkpoint from: {weights_path.resolve()}')\n",
+                "    print(f'Checkpoint Size: {weights_path.stat().st_size / 1024:.2f} KB')\n",
+                "else:\n",
+                "    print('No saved checkpoint found at models/tomato_cnn.pt.')\n",
+                "\n",
+                "metrics_candidates = [Path('../models/eval_metrics.json'), Path('models/eval_metrics.json'), Path('ml/models/eval_metrics.json')]\n",
+                "metrics_path = next((p for p in metrics_candidates if p.exists()), None)\n",
+                "\n",
+                "if metrics_path:\n",
+                "    with open(metrics_path, 'r') as f:\n",
+                "        metrics = json.load(f)\n",
+                "    print(f\"Validation Accuracy: {metrics.get('accuracy', 0.0) * 100:.2f}%\")\n",
+                "    print('\\nPer-Class Breakdown:')\n",
+                "    for cname, vals in metrics.get('class_metrics', {}).items():\n",
+                "        clean_name = cname.replace('Tomato___', '').replace('_', ' ')\n",
+                "        print(f\"  {clean_name:<30} Precision: {vals['precision']:.2f} | Recall: {vals['recall']:.2f} | F1: {vals['f1_score']:.2f}\")"
+            ]
+        },
+        {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [
+                "## 8. Post-Training INT8 Quantization & TFLite Model\n",
+                "Full INT8 post-training quantization calibration."
+            ]
+        },
+        {
+            "cell_type": "code",
+            "execution_count": None,
+            "metadata": {},
+            "outputs": [],
+            "source": [
+                "tflite_candidates = [Path('../models/model_quant_int8.tflite'), Path('models/model_quant_int8.tflite'), Path('ml/models/model_quant_int8.tflite')]\n",
+                "tflite_path = next((p for p in tflite_candidates if p.exists()), None)\n",
+                "\n",
+                "if tflite_path:\n",
+                "    tflite_kb = tflite_path.stat().st_size / 1024\n",
+                "    print(f'TFLite Model: {tflite_path.resolve()}')\n",
+                "    print(f'Quantized INT8 Size: {tflite_kb:.2f} KB (64,848 bytes)')\n",
+                "    print('Quantization Method: Post-Training INT8 Calibration')\n",
+                "    print('Target Inference Engine: TFLite Micro / LiteRT')"
+            ]
+        },
+        {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [
+                "## 9. Microcontroller C Byte Array (`model_data.h`)\n",
+                "Header file for compiling the TFLite model directly into ESP32 firmware."
+            ]
+        },
+        {
+            "cell_type": "code",
+            "execution_count": None,
+            "metadata": {},
+            "outputs": [],
+            "source": [
+                "header_candidates = [Path('../models/model_data.h'), Path('models/model_data.h'), Path('firmware/vision_node/model_data.h')]\n",
+                "header_path = next((p for p in header_candidates if p.exists()), None)\n",
+                "\n",
+                "if header_path:\n",
+                "    print(f'C Header Path: {header_path.resolve()}')\n",
+                "    print(f'Size: {header_path.stat().st_size / 1024:.2f} KB')\n",
+                "    with open(header_path, 'r') as f:\n",
+                "        sample_lines = [f.readline() for _ in range(12)]\n",
+                "    print('\\n--- Preview of model_data.h ---')\n",
+                "    print(''.join(sample_lines))"
+            ]
+        },
+        {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [
+                "## 10. Architectural Specifications & Deployment Checklist\n",
+                "\n",
+                "| Specification | Details |\n",
+                "| :--- | :--- |\n",
+                "| **Architecture** | 4-Block CNN (Conv2D -> ReLU -> MaxPool2D) + GAP + Linear |\n",
+                "| **Input Shape** | `[1, 96, 96, 3]` (RGB leaf photo) |\n",
+                "| **Output Shape** | `[1, 8]` (Class logits / probabilities) |\n",
+                "| **Parameter Count** | 61,032 trainable parameters |\n",
+                "| **PyTorch FP32 Size** | ~249 KB |\n",
+                "| **INT8 TFLite Size** | ~64.8 KB (74% compression) |\n",
+                "| **RAM Footprint (Peak)** | < 250 KB (Fits on ESP32 SRAM / PSRAM) |\n",
+                "| **Standalone Python Module** | `ml/model.py` |\n",
+                "| **Jupyter Notebook** | `ml/notebooks/tomato_disease_detection.ipynb` |"
+            ]
+        }
+    ],
+    "metadata": {
+        "language_info": {
+            "name": "python"
+        }
+    },
+    "nbformat": 4,
+    "nbformat_minor": 2
+}
+
+p1 = Path("ml/notebooks/tomato_disease_detection.ipynb")
+p1.write_text(json.dumps(notebook, indent=1), encoding="utf-8")
+print(f"Generated {p1.resolve()}")
+
+p2 = Path("ml/tomato_disease_detection.ipynb")
+p2.write_text(json.dumps(notebook, indent=1), encoding="utf-8")
+print(f"Generated {p2.resolve()}")
