@@ -129,6 +129,20 @@ class AgriSenseTomatoCNN(nn.Module):
         return logits, features
 
 
+def load_checkpoint(model: nn.Module, checkpoint_path: str, device: str = "cpu") -> Dict:
+    """
+    Loads a checkpoint whether saved as a raw state_dict or dictionary with metadata
+    (epoch, val_accuracy, classes, parameter_count).
+    """
+    checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
+    if isinstance(checkpoint, dict) and "model_state_dict" in checkpoint:
+        model.load_state_dict(checkpoint["model_state_dict"])
+        return checkpoint
+    else:
+        model.load_state_dict(checkpoint)
+        return {"model_state_dict": checkpoint}
+
+
 def count_parameters(model: nn.Module) -> Tuple[int, int]:
     """Returns (trainable_parameters, total_parameters)."""
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -232,3 +246,4 @@ if __name__ == "__main__":
     print(f"  Softmax Probabilities Sum: {probs.sum(dim=-1).tolist()} (Must be [1.0, 1.0])")
     print(f"  Top Predicted Class Index (sample 0): {probs[0].argmax().item()} ({CLASS_NAMES[probs[0].argmax().item()]})")
     print("\nModel definition verified successfully.")
+
