@@ -524,10 +524,23 @@ def main():
         raise FileNotFoundError(f"Checkpoint not found: {ckpt_path}. Run train.py first.")
 
     checkpoint = torch.load(ckpt_path, map_location="cpu", weights_only=False)
-    classes = checkpoint["classes"]
+    if isinstance(checkpoint, dict) and "model_state_dict" in checkpoint:
+        classes = checkpoint.get("classes", [
+            "Tomato___Bacterial_spot", "Tomato___Early_blight", "Tomato___Late_blight",
+            "Tomato___Leaf_Mold", "Tomato___Septoria_leaf_spot",
+            "Tomato___Spider_mites_Two_spotted_spider_mite", "Tomato___Target_Spot", "Tomato___healthy"
+        ])
+        state_dict = checkpoint["model_state_dict"]
+    else:
+        classes = [
+            "Tomato___Bacterial_spot", "Tomato___Early_blight", "Tomato___Late_blight",
+            "Tomato___Leaf_Mold", "Tomato___Septoria_leaf_spot",
+            "Tomato___Spider_mites_Two_spotted_spider_mite", "Tomato___Target_Spot", "Tomato___healthy"
+        ]
+        state_dict = checkpoint
 
     model = AgriSenseTomatoCNN(num_classes=len(classes))
-    model.load_state_dict(checkpoint["model_state_dict"])
+    model.load_state_dict(state_dict)
     model.eval()
 
     # Calibration
