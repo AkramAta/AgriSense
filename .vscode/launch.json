@@ -1,0 +1,26 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "AgriSense Mobile (Chrome Web)",
+      "request": "launch",
+      "type": "dart",
+      "program": "mobile_app/lib/main.dart",
+      "args": ["-d", "chrome"]
+    },
+    {
+      "name": "AgriSense Mobile (Android Emulator)",
+      "request": "launch",
+      "type": "dart",
+      "program": "mobile_app/lib/main.dart",
+      "args": ["-d", "Medium_Phone"]
+    },
+    {
+      "name": "AgriSense Mobile (Windows Desktop)",
+      "request": "launch",
+      "type": "dart",
+      "program": "mobile_app/lib/main.dart",
+      "args": ["-d", "windows"]
+    }
+  ]
+}

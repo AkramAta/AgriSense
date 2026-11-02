@@ -1,0 +1,40 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start ESP32 Hardware Simulator",
+      "type": "shell",
+      "command": "dart",
+      "args": ["mobile_app/tool/esp32_simulator.dart"],
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": true,
+        "clear": true
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Run Flutter App (Chrome)",
+      "type": "shell",
+      "command": "flutter",
+      "args": ["run", "-d", "chrome"],
+      "options": {
+        "cwd": "${workspaceFolder}/mobile_app"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Run Firmware Native Logic Tests",
+      "type": "shell",
+      "command": "python",
+      "args": ["firmware/test/run_host_tests.py"],
+      "problemMatcher": []
+    }
+  ]
+}
