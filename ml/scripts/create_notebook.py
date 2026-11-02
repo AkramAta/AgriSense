@@ -48,7 +48,13 @@ notebook = {
                 "from typing import List, Tuple\n",
                 "\n",
                 "import numpy as np\n",
-                "import matplotlib.pyplot as plt\n",
+                "try:\n",
+                "    import matplotlib.pyplot as plt\n",
+                "except ImportError:\n",
+                "    print('Installing matplotlib...')\n",
+                "    import subprocess, sys\n",
+                "    subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'matplotlib'])\n",
+                "    import matplotlib.pyplot as plt\n",
                 "from PIL import Image\n",
                 "\n",
                 "import torch\n",
@@ -441,3 +447,4 @@ print(f"Generated {p1.resolve()}")
 p2 = Path("ml/tomato_disease_detection.ipynb")
 p2.write_text(json.dumps(notebook, indent=1), encoding="utf-8")
 print(f"Generated {p2.resolve()}")
+
