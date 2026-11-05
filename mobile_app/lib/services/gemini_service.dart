@@ -150,7 +150,7 @@ class GeminiService {
       {String? imageName, String? visionHost}) async {
     // 1. Query the Vision Node / Model inference endpoint directly
     final host = visionHost ?? '10.0.2.2:8081';
-    final candidates = [host, '127.0.0.1:8081', '192.168.4.2:8081'];
+    final candidates = [host, '127.0.0.1:8081', '192.168.1.15:8081', '192.168.4.2:8081'];
     for (final cand in candidates) {
       try {
         final cleanCand = cand.replaceFirst(RegExp(r'^https?://'), '');
@@ -695,22 +695,24 @@ class GeminiService {
       final vector = isMosaic
           ? 'mechanical transmission via contaminated pruning tools, worker hands, and infected root contact'
           : 'whitefly vectors (Bemisia tabaci)';
+      final disinfection = isMosaic
+          ? 'Dip hands and tools in 20% non-fat dry milk solution or 10% trisodium phosphate (TSP) to denature viral coat proteins between plants. Strictly prohibit tobacco use near fields.'
+          : 'Target whitefly populations immediately using insecticidal soap, neem oil (Azadirachtin), or yellow sticky card monitoring.';
+      final resistantGene = isMosaic ? 'Tm-2² resistance allele' : 'Ty-1/Ty-3 resistance genes';
 
-      return '**Specialist Clinical Consultation: $pathogenName**\n\n'
-          'As a plant pathologist, I must emphasize that **viral infections cannot be cured with chemical fungicides or sprays** once systemic infection occurs within the plant vascular system.\n\n'
-          '**Clinical Pathology Assessment:**\n'
-          '• **Primary Vector:** $vector.\n'
-          '• **Key Diagnostic Markers:** $symptoms\n\n'
-          '**Immediate Field Action Plan:**\n'
-          '1. **Rogueing & Quarantine:** Immediately dig up and seal severely symptomatic plants in plastic bags. Do not compost—viral particles survive months in dried residues.\n'
-          '2. **Disinfection Protocol:** ' +
-          (isMosaic
-              ? 'Dip hands and tools in 20% non-fat dry milk solution or 10% trisodium phosphate (TSP) to denature viral coat proteins between plants. Strictly prohibit tobacco use near fields.'
-              : 'Target whitefly populations immediately using insecticidal soap, neem oil (Azadirachtin), or yellow sticky card monitoring.') +
-          '\n3. **Canopy & Cultural Control:** $cultural\n'
-          '4. **Future Preventive Standard:** Plant certified resistant hybrids bearing the ' +
-          (isMosaic ? 'Tm-2² resistance allele' : 'Ty-1/Ty-3 resistance genes') +
-          ' to permanently prevent viral outbreaks.';
+      return '''**Specialist Clinical Consultation: $pathogenName**
+
+As a plant pathologist, I must emphasize that **viral infections cannot be cured with chemical fungicides or sprays** once systemic infection occurs within the plant vascular system.
+
+**Clinical Pathology Assessment:**
+• **Primary Vector:** $vector.
+• **Key Diagnostic Markers:** $symptoms
+
+**Immediate Field Action Plan:**
+1. **Rogueing & Quarantine:** Immediately dig up and seal severely symptomatic plants in plastic bags. Do not compost—viral particles survive months in dried residues.
+2. **Disinfection Protocol:** $disinfection
+3. **Canopy & Cultural Control:** $cultural
+4. **Future Preventive Standard:** Plant certified resistant hybrids bearing the $resistantGene to permanently prevent viral outbreaks.''';
     }
 
     if (rawClassName.contains('Bacterial_spot')) {

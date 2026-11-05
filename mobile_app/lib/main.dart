@@ -7,6 +7,7 @@ import 'screens/chat_screen.dart';
 import 'screens/diagnosis_history_screen.dart';
 import 'screens/disease_diagnosis_screen.dart';
 import 'screens/irrigation_control_screen.dart';
+import 'screens/network_diagnostic_screen.dart';
 import 'screens/sensor_dashboard_screen.dart';
 import 'services/gemini_service.dart';
 import 'services/storage_service.dart';
