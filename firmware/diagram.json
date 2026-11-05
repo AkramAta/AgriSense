@@ -6,57 +6,57 @@
     {
       "type": "board-esp32-devkit-c-v4",
       "id": "esp",
-      "top": 0,
+      "top": 40,
       "left": 0,
       "attrs": {}
     },
     {
-      "type": "wokwi-dht11",
+      "type": "wokwi-dht22",
       "id": "dht",
-      "top": -80,
-      "left": 180,
+      "top": 20,
+      "left": 220,
       "attrs": { "temperature": "24.5", "humidity": "58" }
     },
     {
       "type": "wokwi-potentiometer",
       "id": "soil_sensor",
-      "top": 120,
+      "top": 90,
       "left": -180,
       "attrs": { "value": "2200" }
     },
     {
       "type": "wokwi-relay-module",
       "id": "relay",
-      "top": 120,
-      "left": 180,
+      "top": 160,
+      "left": 220,
       "attrs": {}
     },
     {
       "type": "wokwi-led",
       "id": "pump_led",
-      "top": 240,
-      "left": 200,
+      "top": 290,
+      "left": 240,
       "attrs": { "color": "blue", "label": "PUMP" }
     }
   ],
   "connections": [
     [ "esp:TX", "$serialMonitor:RX", "", [] ],
     [ "esp:RX", "$serialMonitor:TX", "", [] ],
-    [ "esp:3V3", "dht:VCC", "red", [ "v0" ] ],
-    [ "esp:GND.1", "dht:GND", "black", [ "v0" ] ],
-    [ "esp:4", "dht:SDA", "green", [ "v0" ] ],
-    [ "esp:3V3", "soil_sensor:1", "red", [ "h-20" ] ],
-    [ "esp:GND.2", "soil_sensor:3", "black", [ "h-20" ] ],
-    [ "esp:34", "soil_sensor:2", "yellow", [ "h-40" ] ],
-    [ "esp:5V", "relay:VCC", "red", [ "h20" ] ],
-    [ "esp:GND.3", "relay:GND", "black", [ "h20" ] ],
-    [ "esp:26", "relay:IN", "blue", [ "h40" ] ],
-    [ "relay:NO", "pump_led:A", "green", [ "v20" ] ],
-    [ "esp:GND.3", "pump_led:C", "black", [ "v40" ] ]
+    [ "dht:VCC", "esp:3V3", "red", [ "v-15", "h-180" ] ],
+    [ "dht:GND", "esp:GND.1", "black", [ "v-10", "h-140" ] ],
+    [ "dht:SDA", "esp:4", "green", [ "v15", "h-120" ] ],
+    [ "soil_sensor:VCC", "esp:3V3", "red", [ "v-20", "h80" ] ],
+    [ "soil_sensor:SIG", "esp:34", "yellow", [ "v0" ] ],
+    [ "soil_sensor:GND", "esp:GND.2", "black", [ "v20", "h80" ] ],
+    [ "relay:VCC", "esp:5V", "red", [ "h-40", "v80" ] ],
+    [ "relay:GND", "esp:GND.3", "black", [ "h-20" ] ],
+    [ "relay:IN", "esp:26", "blue", [ "h-60", "v-40" ] ],
+    [ "relay:COM", "esp:5V", "red", [ "h-30", "v60" ] ],
+    [ "relay:NO", "pump_led:A", "green", [ "v30" ] ],
+    [ "pump_led:C", "esp:GND.3", "black", [ "h-60", "v-80" ] ]
   ],
   "dependencies": {
     "DHT sensor library": "1.4.6",
     "Adafruit Unified Sensor": "1.1.14"
   }
 }
-

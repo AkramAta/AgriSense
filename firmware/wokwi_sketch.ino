@@ -22,7 +22,7 @@
 // 1. PIN DEFINITIONS & CONSTANTS
 // ============================================================================
 #define DHTPIN 4
-#define DHTTYPE DHT11
+#define DHTTYPE DHT22
 #define SOIL_ADC_PIN 34
 #define RELAY_PIN 26
 #define STATUS_LED_PIN 2
