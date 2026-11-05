@@ -16,6 +16,8 @@ TOMATO_CLASSES: List[str] = [
     "Tomato___Septoria_leaf_spot",
     "Tomato___Spider_mites_Two_spotted_spider_mite",
     "Tomato___Target_Spot",
+    "Tomato___Tomato_mosaic_virus",
+    "Tomato___Tomato_Yellow_Leaf_Curl_Virus",
     "Tomato___healthy",
 ]
 
@@ -75,6 +77,22 @@ TREATMENT_RECOMMENDATIONS: Dict[str, Dict[str, Any]] = {
         "chemical_control": "Apply Pyraclostrobin, Boscalid, or Chlorothalonil.",
         "organic_control": "Bio-fungicides based on Bacillus amyloliquefaciens; copper soaps.",
         "cultural_practices": "Promptly remove crop residue post-harvest; ensure rapid canopy drying through drip irrigation.",
+    },
+    "Tomato___Tomato_mosaic_virus": {
+        "disease_name": "Tomato Mosaic Virus (ToMV - Tobamovirus)",
+        "severity": "High",
+        "symptoms": "Mottled light and dark green patterns on leaves ('mosaic' pattern), leaf distortion, blistering, 'shoestring' leaf morphology, and internal browning of fruit walls.",
+        "chemical_control": "No direct chemical viricides exist. Control vector activity and prevent mechanical spread.",
+        "organic_control": "Soak contaminated equipment in 20% non-fat dry milk solution or 10% trisodium phosphate (TSP) to denature viral particles during handling.",
+        "cultural_practices": "Strict worker sanitation (wash hands with soap and water after handling tobacco products); sanitize pruning shears between plants; rogue infected plants immediately; rotate with non-host crops.",
+    },
+    "Tomato___Tomato_Yellow_Leaf_Curl_Virus": {
+        "disease_name": "Tomato Yellow Leaf Curl Virus (TYLCV - Begomovirus)",
+        "severity": "Critical",
+        "symptoms": "Severe upward curling and cupping of leaflets, marked interveinal yellowing (chlorosis), leaf distortion, and severely stunted plant growth with blossom abortion.",
+        "chemical_control": "Apply systemic insecticides targeting the whitefly vector (Bemisia tabaci) such as Imidacloprid, Acetamiprid, or Spirotetramat.",
+        "organic_control": "Spray insecticidal soaps, horticultural mineral oils, or Azadirachtin (neem extract); introduce predatory insects like Encarsia formosa.",
+        "cultural_practices": "Use yellow sticky cards for whitefly monitoring; install 50-mesh insect-proof netting in greenhouses; immediately rogue and destroy infected plants; use reflective silver plastic mulches.",
     },
     "Tomato___healthy": {
         "disease_name": "Healthy Tomato Foliage",

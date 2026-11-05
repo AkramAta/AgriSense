@@ -46,30 +46,39 @@ class _NetworkDiagnosticScreenState extends State<NetworkDiagnosticScreen> {
                 children: [
                   const Text('Configuration Presets', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   const SizedBox(height: 12),
-                  Row(
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () {
-                            setState(() {
-                              _irrigationController.text = '127.0.0.1:8080';
-                            });
-                            farm.updateHosts(irrigation: '127.0.0.1:8080');
-                          },
-                          child: const Text('Simulator (127.0.0.1:8080)'),
-                        ),
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.android, size: 16),
+                        onPressed: () {
+                          setState(() {
+                            _irrigationController.text = '10.0.2.2:8080';
+                          });
+                          farm.updateHosts(irrigation: '10.0.2.2:8080');
+                        },
+                        label: const Text('Android Emulator (10.0.2.2:8080)'),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () {
-                            setState(() {
-                              _irrigationController.text = '192.168.4.1';
-                            });
-                            farm.updateHosts(irrigation: '192.168.4.1');
-                          },
-                          child: const Text('ESP32 Soft AP (192.168.4.1)'),
-                        ),
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.computer, size: 16),
+                        onPressed: () {
+                          setState(() {
+                            _irrigationController.text = '127.0.0.1:8080';
+                          });
+                          farm.updateHosts(irrigation: '127.0.0.1:8080');
+                        },
+                        label: const Text('Web / Localhost (127.0.0.1:8080)'),
+                      ),
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.wifi, size: 16),
+                        onPressed: () {
+                          setState(() {
+                            _irrigationController.text = '192.168.4.1';
+                          });
+                          farm.updateHosts(irrigation: '192.168.4.1');
+                        },
+                        label: const Text('Physical ESP32 (192.168.4.1)'),
                       ),
                     ],
                   ),
