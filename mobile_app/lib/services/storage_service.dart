@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
@@ -58,6 +57,7 @@ class StorageService {
 
   Database? _db;
   final List<DiagnosisHistoryItem> _inMemoryFallback = [];
+  final Map<String, String> _settingsFallback = {};
 
   Future<Database> get database async {
     if (_db != null) return _db!;
@@ -109,6 +109,52 @@ class StorageService {
         created_at TEXT NOT NULL
       )
     ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS app_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+      )
+    ''');
+  }
+
+  Future<void> saveSetting(String key, String value) async {
+    _settingsFallback[key] = value;
+    try {
+      final db = await database;
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS app_settings (
+          key TEXT PRIMARY KEY,
+          value TEXT NOT NULL
+        )
+      ''');
+      await db.insert(
+        'app_settings',
+        {'key': key, 'value': value},
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    } catch (_) {}
+  }
+
+  Future<String?> getSetting(String key) async {
+    try {
+      final db = await database;
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS app_settings (
+          key TEXT PRIMARY KEY,
+          value TEXT NOT NULL
+        )
+      ''');
+      final res = await db.query(
+        'app_settings',
+        where: 'key = ?',
+        whereArgs: [key],
+        limit: 1,
+      );
+      if (res.isNotEmpty) {
+        return res.first['value'] as String?;
+      }
+    } catch (_) {}
+    return _settingsFallback[key];
   }
 
   Future<int> insertDiagnosis(DiagnosisHistoryItem item) async {

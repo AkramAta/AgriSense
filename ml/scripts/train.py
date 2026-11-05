@@ -7,8 +7,6 @@ Parameter count: exactly 61,032 (~61K parameters), designed for edge microcontro
 
 import argparse
 import json
-import os
-import sys
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -86,6 +84,7 @@ def create_data_loaders(
         raise FileNotFoundError(f"Dataset splits missing in {data_path}. Run download_dataset.py first.")
 
     train_transform = transforms.Compose([
+        transforms.Resize((96, 96)),
         transforms.RandomHorizontalFlip(p=0.5),
         transforms.RandomVerticalFlip(p=0.2),
         transforms.RandomRotation(degrees=15),
@@ -95,6 +94,7 @@ def create_data_loaders(
     ])
 
     val_transform = transforms.Compose([
+        transforms.Resize((96, 96)),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ])
@@ -220,6 +220,9 @@ def train_model(
 
         if val_acc >= best_val_acc:
             best_val_acc = val_acc
+            # 1. Save pure state_dict for seamless notebook & model loading
+            torch.save(model.state_dict(), best_weights_path)
+            # 2. Save full checkpoint with metadata
             torch.save({
                 "epoch": epoch,
                 "model_state_dict": model.state_dict(),
@@ -227,11 +230,11 @@ def train_model(
                 "num_classes": len(classes),
                 "val_accuracy": val_acc,
                 "parameter_count": total_params,
-            }, best_weights_path)
+            }, out_path / "tomato_checkpoint.pt")
 
     # Load best checkpoint for final evaluation matrix
-    best_checkpoint = torch.load(best_weights_path, map_location=device, weights_only=False)
-    model.load_state_dict(best_checkpoint["model_state_dict"])
+    loaded_state = torch.load(best_weights_path, map_location=device, weights_only=True)
+    model.load_state_dict(loaded_state)
     model.eval()
 
     eval_targets, eval_preds = [], []
@@ -253,8 +256,22 @@ def train_model(
 
     print(f"\n[AgriSense Evaluation] Final Validation Accuracy: {metrics['overall_accuracy'] * 100:.2f}%")
     print(f"  Macro F1: {metrics['macro_f1']:.4f}")
-    print(f"  Saved best model checkpoint to: {best_weights_path}")
+    print(f"  Saved best model weights to:    {best_weights_path}")
+    print(f"  Saved full checkpoint to:       {out_path / 'tomato_checkpoint.pt'}")
     print(f"  Saved evaluation metrics to:    {metrics_file}")
+
+    # Automatically trigger INT8 TFLite and C header export
+    try:
+        from convert_tflite import convert_model_pipeline
+        print(f"\n[AgriSense Pipeline] Automatically exporting INT8 TFLite & C Array...")
+        convert_model_pipeline(
+            checkpoint_path=str(out_path / "tomato_checkpoint.pt"),
+            dataset_dir=data_dir,
+            output_tflite=str(out_path / "model_quant_int8.tflite"),
+            output_metadata=str(out_path / "training_metadata.json"),
+        )
+    except Exception as e:
+        print(f"[AgriSense Pipeline] Note: Run convert_tflite.py to generate TFLite: {e}")
 
     return metrics
 

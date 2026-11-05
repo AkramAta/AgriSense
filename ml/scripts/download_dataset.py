@@ -8,13 +8,8 @@ deterministic CI/CD environments and local verification.
 
 import argparse
 import json
-import math
-import os
 import random
 import shutil
-import sys
-import urllib.request
-import zipfile
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFilter
 

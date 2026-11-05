@@ -71,7 +71,34 @@ class DiseaseDiagnosisScreen extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
+
+          // Edge Model Status Indicator
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE8F5E9),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFA5D6A7)),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.memory, size: 18, color: Color(0xFF1B5E20)),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Engine: AgriSense High-Accuracy Disease Model (Mobile Camera)',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1B5E20),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
 
           // Leaf Image Preview Card
           Card(
@@ -152,7 +179,7 @@ class DiseaseDiagnosisScreen extends StatelessWidget {
                   children: [
                     CircularProgressIndicator(),
                     SizedBox(height: 12),
-                    Text('Analyzing foliar pathology with Plant AI...'),
+                    Text('Running AgriSense CNN INT8 Model on foliar image...'),
                   ],
                 ),
               ),

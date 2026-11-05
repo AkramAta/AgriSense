@@ -8,8 +8,6 @@ training_metadata.json, and exports C byte array (model_data.h).
 
 import argparse
 import json
-import os
-import struct
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -20,7 +18,13 @@ import torch.nn as nn
 from PIL import Image
 
 import ai_edge_litert.schema_py_generated as schema
-from train import AgriSenseTomatoCNN
+try:
+    from train import AgriSenseTomatoCNN
+except ImportError:
+    try:
+        from ml.scripts.train import AgriSenseTomatoCNN
+    except ImportError:
+        from ml.model import AgriSenseTomatoCNN
 
 
 def get_quant_params(min_val: float, max_val: float, narrow_range: bool = False) -> Tuple[float, int]:
@@ -278,15 +282,17 @@ def build_tflite_model(
     # 17: gap_out [1, 1, 1, 64]
     t_gap = add_tensor("gap_out", [1, 1, 1, 64], INT8, 0, make_quant(*act_quant["gap"]))
 
-    # 18: fc_w [8, 64]
-    t_wfc = add_tensor("fc_w", list(w_fc.shape), INT8, b_wfc_idx, make_quant(s_w_fc, z_w_fc))
-    # 19: fc_b [8]
-    t_bfc = add_tensor("fc_b", [8], INT32, b_bfc_idx, make_quant(act_quant["gap"][0] * s_w_fc, 0))
-    # 20: fc_out [1, 8]
-    t_fc = add_tensor("fc_out", [1, 8], INT8, 0, make_quant(*act_quant["fc"]))
+    num_classes = len(classes)
 
-    # 21: final output softmax [1, 8] (Scale: 1/256, zp: -128)
-    t_out = add_tensor("Identity", [1, 8], INT8, 0, make_quant(1.0 / 256.0, -128))
+    # 18: fc_w [num_classes, 64]
+    t_wfc = add_tensor("fc_w", list(w_fc.shape), INT8, b_wfc_idx, make_quant(s_w_fc, z_w_fc))
+    # 19: fc_b [num_classes]
+    t_bfc = add_tensor("fc_b", [num_classes], INT32, b_bfc_idx, make_quant(act_quant["gap"][0] * s_w_fc, 0))
+    # 20: fc_out [1, num_classes]
+    t_fc = add_tensor("fc_out", [1, num_classes], INT8, 0, make_quant(*act_quant["fc"]))
+
+    # 21: final output softmax [1, num_classes] (Scale: 1/256, zp: -128)
+    t_out = add_tensor("Identity", [1, num_classes], INT8, 0, make_quant(1.0 / 256.0, -128))
 
     # Operator Codes
     # Opcode 0: CONV_2D
@@ -422,7 +428,7 @@ def build_tflite_model(
     metadata = {
         "model_name": "AgriSense-Tomato-CNN-4Block",
         "architecture": "4x(Conv2D+ReLU+MaxPool2D) -> AvgPool2D -> FC -> Softmax",
-        "parameter_count": 61032,
+        "parameter_count": sum(p.numel() for p in model.parameters()),
         "input_tensor": {
             "name": "input",
             "shape": [1, 96, 96, 3],
@@ -432,7 +438,7 @@ def build_tflite_model(
         },
         "output_tensor": {
             "name": "Identity",
-            "shape": [1, 8],
+            "shape": [1, len(classes)],
             "dtype": "int8",
             "scale": 1.0 / 256.0,
             "zero_point": -128,
@@ -511,31 +517,37 @@ def verify_tflite_model(tflite_bytes: bytes, metadata: Dict):
     print(f"  Output raw INT8 logits: {output_data.flatten().tolist()}")
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Convert AgriSense CNN checkpoint to INT8 TFLite model.")
-    parser.add_argument("--checkpoint", default="ml/models/tomato_cnn.pt", help="PyTorch model checkpoint path")
-    parser.add_argument("--dataset-dir", default="ml/dataset", help="Dataset directory for calibration")
-    parser.add_argument("--output-tflite", default="ml/models/model_quant_int8.tflite", help="TFLite output path")
-    parser.add_argument("--output-metadata", default="ml/models/training_metadata.json", help="Metadata JSON output")
-    args = parser.parse_args()
-
-    ckpt_path = Path(args.checkpoint)
+def convert_model_pipeline(
+    checkpoint_path: str = "ml/models/tomato_checkpoint.pt",
+    dataset_dir: str = "ml/dataset/tomato",
+    output_tflite: str = "ml/models/model_quant_int8.tflite",
+    output_metadata: str = "ml/models/training_metadata.json",
+    num_samples: int = 100,
+):
+    ckpt_path = Path(checkpoint_path)
     if not ckpt_path.exists():
-        raise FileNotFoundError(f"Checkpoint not found: {ckpt_path}. Run train.py first.")
+        # Fallback to tomato_cnn.pt
+        alt_ckpt = ckpt_path.parent / "tomato_cnn.pt"
+        if alt_ckpt.exists():
+            ckpt_path = alt_ckpt
+        else:
+            raise FileNotFoundError(f"Checkpoint not found: {ckpt_path}. Run train.py first.")
 
     checkpoint = torch.load(ckpt_path, map_location="cpu", weights_only=False)
     if isinstance(checkpoint, dict) and "model_state_dict" in checkpoint:
         classes = checkpoint.get("classes", [
             "Tomato___Bacterial_spot", "Tomato___Early_blight", "Tomato___Late_blight",
             "Tomato___Leaf_Mold", "Tomato___Septoria_leaf_spot",
-            "Tomato___Spider_mites_Two_spotted_spider_mite", "Tomato___Target_Spot", "Tomato___healthy"
+            "Tomato___Spider_mites_Two_spotted_spider_mite", "Tomato___Target_Spot",
+            "Tomato___Tomato_mosaic_virus", "Tomato___Tomato_Yellow_Leaf_Curl_Virus", "Tomato___healthy"
         ])
         state_dict = checkpoint["model_state_dict"]
     else:
         classes = [
             "Tomato___Bacterial_spot", "Tomato___Early_blight", "Tomato___Late_blight",
             "Tomato___Leaf_Mold", "Tomato___Septoria_leaf_spot",
-            "Tomato___Spider_mites_Two_spotted_spider_mite", "Tomato___Target_Spot", "Tomato___healthy"
+            "Tomato___Spider_mites_Two_spotted_spider_mite", "Tomato___Target_Spot",
+            "Tomato___Tomato_mosaic_virus", "Tomato___Tomato_Yellow_Leaf_Curl_Virus", "Tomato___healthy"
         ]
         state_dict = checkpoint
 
@@ -544,17 +556,17 @@ def main():
     model.eval()
 
     # Calibration
-    calib_ranges = run_representative_calibration(model, Path(args.dataset_dir), num_samples=32)
+    calib_ranges = run_representative_calibration(model, Path(dataset_dir), num_samples=num_samples)
 
     # Build TFLite Model
     tflite_bytes, metadata = build_tflite_model(model, calib_ranges, classes)
 
-    out_tflite = Path(args.output_tflite)
+    out_tflite = Path(output_tflite)
     out_tflite.parent.mkdir(parents=True, exist_ok=True)
     with open(out_tflite, "wb") as f:
         f.write(tflite_bytes)
 
-    out_meta = Path(args.output_metadata)
+    out_meta = Path(output_metadata)
     with open(out_meta, "w") as f:
         json.dump(metadata, f, indent=2)
 
@@ -571,6 +583,23 @@ def main():
 
     # Verify with LiteRT runtime
     verify_tflite_model(tflite_bytes, metadata)
+    return out_tflite, out_meta
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Convert AgriSense CNN checkpoint to INT8 TFLite model.")
+    parser.add_argument("--checkpoint", default="ml/models/tomato_checkpoint.pt", help="PyTorch model checkpoint path")
+    parser.add_argument("--dataset-dir", default="ml/dataset/tomato", help="Dataset directory for calibration")
+    parser.add_argument("--output-tflite", default="ml/models/model_quant_int8.tflite", help="TFLite output path")
+    parser.add_argument("--output-metadata", default="ml/models/training_metadata.json", help="Metadata JSON output")
+    args = parser.parse_args()
+
+    convert_model_pipeline(
+        checkpoint_path=args.checkpoint,
+        dataset_dir=args.dataset_dir,
+        output_tflite=args.output_tflite,
+        output_metadata=args.output_metadata,
+    )
 
 
 if __name__ == "__main__":

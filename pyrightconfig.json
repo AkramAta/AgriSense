@@ -1,0 +1,13 @@
+{
+  "include": [
+    "backend",
+    "ml"
+  ],
+  "extraPaths": [
+    "backend/common_layer/python",
+    "backend/handlers",
+    "ml",
+    "ml/scripts"
+  ]
+}
+

@@ -28,12 +28,11 @@ Target Classes (8):
   7: Tomato___healthy
 """
 
-import sys
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 import torch
 import torch.nn as nn
 
-# Canonical 8 Tomato Pathology Classes
+# Canonical 10 Tomato Pathology Classes (PlantVillage)
 CLASS_NAMES: List[str] = [
     "Tomato___Bacterial_spot",
     "Tomato___Early_blight",
@@ -42,6 +41,8 @@ CLASS_NAMES: List[str] = [
     "Tomato___Septoria_leaf_spot",
     "Tomato___Spider_mites_Two_spotted_spider_mite",
     "Tomato___Target_Spot",
+    "Tomato___Tomato_mosaic_virus",
+    "Tomato___Tomato_Yellow_Leaf_Curl_Virus",
     "Tomato___healthy",
 ]
 
@@ -52,7 +53,10 @@ HUMAN_READABLE_NAMES: Dict[str, str] = {
     "Tomato___Leaf_Mold": "Leaf Mold",
     "Tomato___Septoria_leaf_spot": "Septoria Leaf Spot",
     "Tomato___Spider_mites_Two_spotted_spider_mite": "Spider Mites (Two-spotted)",
+    "Tomato___Spider_mites Two-spotted_spider_mite": "Spider Mites (Two-spotted)",
     "Tomato___Target_Spot": "Target Spot",
+    "Tomato___Tomato_mosaic_virus": "Tomato Mosaic Virus (ToMV)",
+    "Tomato___Tomato_Yellow_Leaf_Curl_Virus": "Tomato Yellow Leaf Curl Virus (TYLCV)",
     "Tomato___healthy": "Healthy Foliage",
 }
 
@@ -200,7 +204,6 @@ def build_keras_model(input_shape=(96, 96, 3), num_classes=8):
     Requires: tensorflow
     """
     try:
-        import tensorflow as tf
         from tensorflow.keras import layers, models
     except ImportError:
         raise ImportError("TensorFlow is required to build the Keras model. Install with `pip install tensorflow`.")

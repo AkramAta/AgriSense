@@ -1,8 +1,8 @@
 # AgriSense Machine Learning Dataset & Quantization Specifications
 
-## 1. PlantVillage Tomato Subset Overview
+## 1. PlantVillage Tomato Dataset Overview
 
-The AgriSense vision model is trained on the curated 8-class tomato foliar pathology subset from the PlantVillage dataset:
+The AgriSense vision model is trained on the comprehensive 10-class tomato foliar pathology dataset from PlantVillage (10,984 total images: 10,000 training, 984 validation):
 
 | Index | Class Identifier | Pathogen Type | Primary Foliar Symptoms |
 |:------|:-----------------|:--------------|:------------------------|
@@ -13,7 +13,9 @@ The AgriSense vision model is trained on the curated 8-class tomato foliar patho
 | **4** | `Tomato___Septoria_leaf_spot` | Fungus (*Septoria lycopersici*) | Circular greyish-white lesions (1-3mm) with distinct dark margins and black pycnidia. |
 | **5** | `Tomato___Spider_mites_Two_spotted_spider_mite` | Arachnid (*Tetranychus urticae*) | Fine yellow-white stippling and webbing under hot, dry conditions. |
 | **6** | `Tomato___Target_Spot` | Fungus (*Corynespora casiicola*) | Dark brown circular lesions with concentric rings across the entire canopy. |
-| **7** | `Tomato___healthy` | Healthy Control | Uniform green chlorophyl, intact margins, zero necrotic spots. |
+| **7** | `Tomato___Tomato_mosaic_virus` | Tobamovirus (*ToMV*) | Mottled light/dark green mosaic patterns, blistering, and shoestring distortion. |
+| **8** | `Tomato___Tomato_Yellow_Leaf_Curl_Virus` | Begomovirus (*TYLCV*) | Severe upward leaf cupping, marked interveinal yellowing, and stunted bushy growth. |
+| **9** | `Tomato___healthy` | Healthy Control | Uniform green chlorophyll, intact margins, zero necrotic spots. |
 
 ---
 

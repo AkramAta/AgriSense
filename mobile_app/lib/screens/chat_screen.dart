@@ -184,6 +184,51 @@ class _ChatScreenState extends State<ChatScreen> {
         title: const Text('AI Agronomist Chat'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.key),
+            tooltip: 'Gemini API Key (Optional for Chat)',
+            onPressed: () {
+              final diag = context.read<DiagnosisProvider>();
+              final keyController = TextEditingController(text: diag.apiKey);
+              showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Gemini API Key (Chat)'),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Optional: Enter a Gemini API Key to enable conversational agronomic intelligence in this chat tab.\n\n(Note: The Disease Scanner will continue using your 96.3% DenseNet model offline).',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: keyController,
+                        obscureText: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Google Gemini API Key',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('Cancel'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () async {
+                        await diag.setApiKey(keyController.text);
+                        if (context.mounted) Navigator.pop(ctx);
+                      },
+                      child: const Text('Save'),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Clear Chat',
             onPressed: () => chat.clearChat(),
@@ -267,27 +312,56 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ),
 
-          // Quick Suggestion Chips
+          // Quick Suggestion Chips (Context-Aware)
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             child: Row(
-              children: [
-                ActionChip(
-                  label: const Text('Blight Treatment'),
-                  onPressed: () => _send('How do I treat Early Blight on my tomatoes?'),
-                ),
-                const SizedBox(width: 6),
-                ActionChip(
-                  label: const Text('Irrigation Schedule'),
-                  onPressed: () => _send('What soil moisture range should I maintain?'),
-                ),
-                const SizedBox(width: 6),
-                ActionChip(
-                  label: const Text('Organic Sprays'),
-                  onPressed: () => _send('What organic fungicide or soap can I spray?'),
-                ),
-              ],
+              children: activeDiag != null
+                  ? [
+                      ActionChip(
+                        avatar: const Icon(Icons.format_list_numbered, size: 16),
+                        label: const Text('Action Steps'),
+                        onPressed: () => _send('I want steps'),
+                      ),
+                      const SizedBox(width: 6),
+                      ActionChip(
+                        avatar: const Icon(Icons.spa, size: 16),
+                        label: const Text('Alternative Remedies'),
+                        onPressed: () => _send('Is there another solution?'),
+                      ),
+                      const SizedBox(width: 6),
+                      ActionChip(
+                        avatar: const Icon(Icons.sanitizer, size: 16),
+                        label: const Text('Spray Dosage'),
+                        onPressed: () => _send('What is the spray dosage and application interval?'),
+                      ),
+                      const SizedBox(width: 6),
+                      ActionChip(
+                        avatar: const Icon(Icons.water_drop, size: 16),
+                        label: const Text('Irrigation Guard'),
+                        onPressed: () => _send('What soil moisture range should I maintain?'),
+                      ),
+                    ]
+                  : [
+                      ActionChip(
+                        avatar: const Icon(Icons.eco, size: 16),
+                        label: const Text('Disease Scout'),
+                        onPressed: () => _send('How do I identify and treat leaf diseases?'),
+                      ),
+                      const SizedBox(width: 6),
+                      ActionChip(
+                        avatar: const Icon(Icons.water_drop, size: 16),
+                        label: const Text('Irrigation Schedule'),
+                        onPressed: () => _send('What soil moisture range should I maintain?'),
+                      ),
+                      const SizedBox(width: 6),
+                      ActionChip(
+                        avatar: const Icon(Icons.grass, size: 16),
+                        label: const Text('Organic Sprays'),
+                        onPressed: () => _send('What organic fungicide or soap can I spray?'),
+                      ),
+                    ],
             ),
           ),
 

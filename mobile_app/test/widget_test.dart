@@ -3,8 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:agrisense_mobile/main.dart';
 
 void main() {
-  testWidgets('AgriSense App boots and displays Sensor Dashboard and Navigation tabs', (WidgetTester tester) async {
-    await tester.pumpWidget(const AgriSenseApp());
+  testWidgets(
+      'AgriSense App boots and displays Sensor Dashboard and Navigation tabs',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(AgriSenseApp());
     await tester.pumpAndSettle();
 
     // Verify Dashboard Title
@@ -43,4 +45,3 @@ void main() {
     expect(find.text('AI Agronomist Chat'), findsOneWidget);
   });
 }
-

@@ -1,0 +1,48 @@
+{
+  "classes": {
+    "Tomato___Bacterial_spot": {
+      "train": 1000,
+      "val": 100
+    },
+    "Tomato___Early_blight": {
+      "train": 1000,
+      "val": 100
+    },
+    "Tomato___Late_blight": {
+      "train": 1000,
+      "val": 100
+    },
+    "Tomato___Leaf_Mold": {
+      "train": 1000,
+      "val": 100
+    },
+    "Tomato___Septoria_leaf_spot": {
+      "train": 1000,
+      "val": 100
+    },
+    "Tomato___Spider_mites Two-spotted_spider_mite": {
+      "train": 1000,
+      "val": 84
+    },
+    "Tomato___Target_Spot": {
+      "train": 1000,
+      "val": 100
+    },
+    "Tomato___Tomato_Yellow_Leaf_Curl_Virus": {
+      "train": 1000,
+      "val": 100
+    },
+    "Tomato___Tomato_mosaic_virus": {
+      "train": 1000,
+      "val": 100
+    },
+    "Tomato___healthy": {
+      "train": 1000,
+      "val": 100
+    }
+  },
+  "total_classes": 10,
+  "total_train_images": 10000,
+  "total_val_images": 984,
+  "total_images": 10984
+}

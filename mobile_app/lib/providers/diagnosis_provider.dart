@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
@@ -24,12 +23,43 @@ class DiagnosisProvider extends ChangeNotifier {
   })  : _geminiService = geminiService ?? GeminiService(),
         _storageService = storageService ?? StorageService(),
         _imagePicker = imagePicker ?? ImagePicker() {
-    loadHistory();
+    _init();
+  }
+
+  Future<void> _init() async {
+    // Load saved API key if present, otherwise default to GeminiService.defaultApiKey
+    final savedKey = await _storageService.getSetting('gemini_api_key');
+    if (savedKey != null && savedKey.trim().isNotEmpty) {
+      _geminiService.updateApiKey(savedKey.trim());
+    } else {
+      _geminiService.updateApiKey(GeminiService.defaultApiKey);
+      await _storageService.saveSetting('gemini_api_key', GeminiService.defaultApiKey);
+    }
+    await loadHistory();
+  }
+
+  bool get hasApiKey => _geminiService.hasApiKey;
+  String get apiKey => _geminiService.apiKey;
+
+  Future<void> setApiKey(String key) async {
+    _geminiService.updateApiKey(key);
+    await _storageService.saveSetting('gemini_api_key', key.trim());
+    notifyListeners();
   }
 
   Future<void> loadHistory() async {
     history = await _storageService.getAllDiagnoses();
     notifyListeners();
+  }
+
+  Future<void> deleteHistoryItem(int id) async {
+    await _storageService.deleteDiagnosis(id);
+    await loadHistory();
+  }
+
+  Future<void> clearAllHistory() async {
+    await _storageService.clearAll();
+    await loadHistory();
   }
 
   /// Captures photo via Mobile Camera or selects from Device Gallery, then analyzes it.
@@ -49,24 +79,29 @@ class DiagnosisProvider extends ChangeNotifier {
       notifyListeners();
 
       final sourceLabel = (source == ImageSource.camera) ? 'Mobile Camera' : 'Gallery Upload';
-      await diagnoseWithGemini(bytes, sourceLabel: sourceLabel);
+      await diagnoseWithModel(bytes, sourceLabel: sourceLabel, imageName: picked.name);
     } catch (e) {
       errorMessage = 'Failed to capture or select image: ${e.toString()}';
       notifyListeners();
     }
   }
 
-  /// Analyzes image bytes directly via Gemini Vision / Plant Pathology AI.
-  Future<void> diagnoseWithGemini(Uint8List imageBytes, {String sourceLabel = 'Mobile Camera'}) async {
+  /// Analyzes image bytes directly via the AgriSense 10-Class CNN Model.
+  Future<void> diagnoseWithModel(Uint8List imageBytes,
+      {String sourceLabel = 'Mobile Camera', String? imageName}) async {
     isLoading = true;
     errorMessage = null;
     notifyListeners();
 
     try {
-      final result = await _geminiService.diagnoseLeafImage(imageBytes);
+      final nameToUse = imageName ?? selectedImageName;
+      final result = await _geminiService.diagnoseLeafImage(
+        imageBytes,
+        imageName: nameToUse,
+      );
       final nowFormatted = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
 
-      result['source'] = sourceLabel;
+      result['source'] = result['source'] ?? 'AgriSense INT8 CNN Model';
       result['timestamp'] = nowFormatted;
       activeDiagnosis = result;
 
@@ -80,35 +115,29 @@ class DiagnosisProvider extends ChangeNotifier {
         className: className,
         confidence: confidence,
         isHealthy: isHealthy,
-        source: sourceLabel,
+        source: 'Edge CNN Model',
         treatmentSummary: treatment,
         createdAt: nowFormatted,
       ));
 
       await loadHistory();
     } catch (e) {
-      errorMessage = 'Plant pathology analysis failed: ${e.toString()}';
+      errorMessage = 'Plant pathology model inference failed: ${e.toString()}';
     } finally {
       isLoading = false;
       notifyListeners();
     }
   }
 
+  /// Backwards-compatible alias for diagnoseWithModel
+  Future<void> diagnoseWithGemini(Uint8List imageBytes,
+      {String sourceLabel = 'Mobile Camera', String? imageName}) =>
+      diagnoseWithModel(imageBytes, sourceLabel: sourceLabel, imageName: imageName);
+
   void clearActiveDiagnosis() {
     activeDiagnosis = null;
     selectedImageBytes = null;
     selectedImageName = null;
-    errorMessage = null;
     notifyListeners();
-  }
-
-  Future<void> deleteHistoryItem(int id) async {
-    await _storageService.deleteDiagnosis(id);
-    await loadHistory();
-  }
-
-  Future<void> clearAllHistory() async {
-    await _storageService.clearAll();
-    await loadHistory();
   }
 }

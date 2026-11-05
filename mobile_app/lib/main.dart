@@ -7,24 +7,47 @@ import 'screens/chat_screen.dart';
 import 'screens/diagnosis_history_screen.dart';
 import 'screens/disease_diagnosis_screen.dart';
 import 'screens/irrigation_control_screen.dart';
-import 'screens/network_diagnostic_screen.dart';
 import 'screens/sensor_dashboard_screen.dart';
+import 'services/gemini_service.dart';
+import 'services/storage_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const AgriSenseApp());
+  final geminiService = GeminiService();
+  final storageService = StorageService();
+  runApp(AgriSenseApp(
+    geminiService: geminiService,
+    storageService: storageService,
+  ));
 }
 
 class AgriSenseApp extends StatelessWidget {
-  const AgriSenseApp({super.key});
+  final GeminiService geminiService;
+  final StorageService storageService;
+
+  AgriSenseApp({
+    super.key,
+    GeminiService? geminiService,
+    StorageService? storageService,
+  })  : geminiService = geminiService ?? GeminiService(),
+        storageService = storageService ?? StorageService();
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => FarmProvider()..startPolling()),
-        ChangeNotifierProvider(create: (_) => DiagnosisProvider()),
-        ChangeNotifierProvider(create: (_) => ChatProvider()),
+        ChangeNotifierProvider(
+          create: (_) => DiagnosisProvider(
+            geminiService: geminiService,
+            storageService: storageService,
+          ),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => ChatProvider(
+            geminiService: geminiService,
+          ),
+        ),
       ],
       child: MaterialApp(
         title: 'AgriSense',

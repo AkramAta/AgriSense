@@ -14,10 +14,10 @@ TOMATO_CLASSES: List[str] = [
     "Tomato___Late_blight",
     "Tomato___Leaf_Mold",
     "Tomato___Septoria_leaf_spot",
-    "Tomato___Spider_mites_Two_spotted_spider_mite",
+    "Tomato___Spider_mites Two-spotted_spider_mite",
     "Tomato___Target_Spot",
-    "Tomato___Tomato_mosaic_virus",
     "Tomato___Tomato_Yellow_Leaf_Curl_Virus",
+    "Tomato___Tomato_mosaic_virus",
     "Tomato___healthy",
 ]
 
@@ -101,6 +101,14 @@ TREATMENT_RECOMMENDATIONS: Dict[str, Dict[str, Any]] = {
         "chemical_control": "No chemical intervention required.",
         "organic_control": "Maintain balanced fertility (N-P-K with micronutrients like Calcium and Magnesium).",
         "cultural_practices": "Continue scheduled moisture sensor monitoring; maintain drip irrigation schedule; scout regularly.",
+    },
+    "Tomato___Spider_mites Two-spotted_spider_mite": {
+        "disease_name": "Two-Spotted Spider Mite (Tetranychus urticae)",
+        "severity": "High (in hot/dry conditions)",
+        "symptoms": "Yellow stippling or bronzing of upper leaf surface, progressing to chlorosis, accompanied by fine silky webbing.",
+        "chemical_control": "Rotate miticides with different modes of action (e.g., Bifenazate, Abamectin, or Spiromesifen).",
+        "organic_control": "Release predatory mites (Phytoseiulus persimilis); apply insecticidal soap, neem oil, or horticultural oils.",
+        "cultural_practices": "Maintain soil moisture to reduce plant water stress; hose down foliage to disrupt webs in small plots.",
     },
 }
 

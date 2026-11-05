@@ -1,0 +1,15 @@
+{
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}/backend/common_layer/python",
+    "${workspaceFolder}/backend/handlers",
+    "${workspaceFolder}/ml",
+    "${workspaceFolder}/ml/scripts"
+  ],
+  "python.autoComplete.extraPaths": [
+    "${workspaceFolder}/backend/common_layer/python",
+    "${workspaceFolder}/backend/handlers",
+    "${workspaceFolder}/ml",
+    "${workspaceFolder}/ml/scripts"
+  ]
+}
+

@@ -1,221 +1,257 @@
 #!/usr/bin/env python3
 """
-AgriSense - Tomato Leaf Pathology CNN Training & TFLite Quantization Pipeline
-=============================================================================
-Trains a convolutional neural network on the 10-class PlantVillage Tomato Dataset
-and exports the trained model to both Keras format and quantized INT8 TFLite for
-embedded and mobile deployment.
+AgriSense - 10-Class Tomato Leaf Disease CNN Training & TFLite Quantization Pipeline
+===================================================================================
+High-Accuracy training pipeline for the 10-class PlantVillage Tomato Dataset.
+Trains the 4-block CNN architecture with data augmentation, AdamW, Cosine Annealing,
+and Label Smoothing to achieve maximum validation accuracy.
+Exports all required project model artifacts:
 
-Dataset Classes (10):
-- Tomato___Bacterial_spot
-- Tomato___Early_blight
-- Tomato___healthy
-- Tomato___Late_blight
-- Tomato___Leaf_Mold
-- Tomato___Septoria_leaf_spot
-- Tomato___Spider_mites Two-spotted_spider_mite
-- Tomato___Target_Spot
-- Tomato___Tomato_mosaic_virus
-- Tomato___Tomato_Yellow_Leaf_Curl_Virus
+Target Output Artifacts:
+1. ml/models/tomato_cnn.pt             (Pure PyTorch state_dict weights)
+2. ml/models/tomato_checkpoint.pt      (PyTorch checkpoint with metadata & classes)
+3. ml/models/eval_metrics.json         (Evaluation confusion matrix & accuracy)
+4. ml/models/model_quant_int8.tflite   (Quantized INT8 FlatBuffer model)
+5. ml/models/training_metadata.json    (Input/output tensor specs & class map)
+6. ml/models/model_data.h              (16-byte aligned C header for TFLite Micro)
+7. firmware/vision_node/model_data.h   (Edge firmware C header)
 """
 
 import argparse
 import json
-import os
 import sys
+import time
+from pathlib import Path
+
 import numpy as np
 
+# Resolve project directories
+SCRIPT_DIR = Path(__file__).parent.resolve()
+ML_DIR = SCRIPT_DIR.parent.parent.resolve()
+ROOT_DIR = ML_DIR.parent.resolve()
+MODELS_DIR = ML_DIR / "models"
+FIRMWARE_VISION_DIR = ROOT_DIR / "firmware" / "vision_node"
+SCRIPTS_DIR = ML_DIR / "scripts"
 
-def build_model(input_shape=(128, 128, 3), num_classes=10):
-    """Constructs the AgriSense 3-Block CNN Architecture."""
-    import tensorflow as tf
-    from tensorflow.keras import layers, models
+for p in [str(ROOT_DIR), str(ML_DIR), str(SCRIPTS_DIR)]:
+    if p not in sys.path:
+        sys.path.insert(0, p)
 
-    model = models.Sequential([
-        layers.Input(shape=input_shape),
-
-        # Block 1
-        layers.Conv2D(32, (3, 3), padding='same', activation='relu', name='conv1'),
-        layers.MaxPooling2D(pool_size=(2, 2), name='pool1'),
-
-        # Block 2
-        layers.Conv2D(16, (3, 3), padding='same', activation='relu', name='conv2'),
-        layers.MaxPooling2D(pool_size=(2, 2), name='pool2'),
-
-        # Block 3
-        layers.Conv2D(8, (3, 3), padding='same', activation='relu', name='conv3'),
-        layers.MaxPooling2D(pool_size=(2, 2), name='pool3'),
-
-        # Dense Classification Head
-        layers.Flatten(name='flatten'),
-        layers.Dense(128, activation='relu', name='fc1'),
-        layers.Dropout(0.5, name='dropout'),
-        layers.Dense(num_classes, activation='softmax', name='predictions')
-    ])
-
-    model.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
-        loss='categorical_crossentropy',
-        metrics=['accuracy']
-    )
-    return model
+from ml.scripts.train import AgriSenseTomatoCNN, compute_evaluation_matrix, get_parameter_count
+from ml.scripts.convert_tflite import convert_model_pipeline
 
 
-def export_quantized_tflite(model, val_generator, output_tflite_path, num_calibration_steps=50):
-    """Exports model to INT8 Quantized TFLite using a representative dataset."""
-    import tensorflow as tf
+def run_training_pipeline(args):
+    dataset_path = Path(args.dataset_dir).resolve()
+    train_dir = dataset_path / "train"
+    val_dir = dataset_path / "val"
 
-    print(f"\n[AgriSense ML] Generating INT8 Quantized TFLite model -> {output_tflite_path}")
-
-    def representative_dataset():
-        batches_seen = 0
-        for images, _ in val_generator:
-            for i in range(images.shape[0]):
-                single_img = np.expand_dims(images[i], axis=0).astype(np.float32)
-                yield [single_img]
-                batches_seen += 1
-                if batches_seen >= num_calibration_steps:
-                    return
-
-    converter = tf.lite.TFLiteConverter.from_keras_model(model)
-    converter.optimizations = [tf.lite.Optimize.DEFAULT]
-    converter.representative_dataset = representative_dataset
-    converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
-    converter.inference_input_type = tf.int8
-    converter.inference_output_type = tf.int8
-
-    try:
-        tflite_quant_model = converter.convert()
-        with open(output_tflite_path, 'wb') as f:
-            f.write(tflite_quant_model)
-        size_kb = len(tflite_quant_model) / 1024.0
-        print(f"[AgriSense ML] Quantization Success! Output footprint: {size_kb:.2f} KB")
-    except Exception as e:
-        print(f"[AgriSense ML] Full integer quantization fallback: {e}")
-        converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS]
-        converter.inference_input_type = tf.float32
-        converter.inference_output_type = tf.float32
-        tflite_model = converter.convert()
-        with open(output_tflite_path, 'wb') as f:
-            f.write(tflite_model)
-        size_kb = len(tflite_model) / 1024.0
-        print(f"[AgriSense ML] Saved standard TFLite model: {size_kb:.2f} KB")
-
-
-def train_pipeline(args):
-    import tensorflow as tf
-    from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
-    from tensorflow.keras.preprocessing.image import ImageDataGenerator
-
-    # Validate directory structure
-    train_dir = os.path.join(args.dataset_dir, 'train')
-    val_dir = os.path.join(args.dataset_dir, 'val')
-
-    if not os.path.isdir(train_dir) or not os.path.isdir(val_dir):
-        print(f"[Error] Dataset directory must contain 'train' and 'val' subfolders: {args.dataset_dir}")
+    if not train_dir.exists() or not val_dir.exists():
+        print(f"[Error] Dataset directory must contain 'train' and 'val' subdirectories: {dataset_path}")
         sys.exit(1)
 
-    os.makedirs(args.output_dir, exist_ok=True)
+    output_dir = Path(args.output_dir).resolve()
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    img_size = (args.img_size, args.img_size)
+    print("=" * 65)
+    print("  AgriSense High-Accuracy 10-Class CNN Pipeline")
+    print("=" * 65)
 
-    # Data Generators with domain-specific leaf augmentation
-    print(f"[AgriSense ML] Loading training dataset from: {train_dir}")
-    train_datagen = ImageDataGenerator(
-        rescale=1.0 / 255.0,
-        shear_range=0.2,
-        zoom_range=0.2,
-        horizontal_flip=True,
-        rotation_range=20,
-        fill_mode='nearest'
-    )
+    import torch
+    import torch.nn as nn
+    import torch.optim as optim
+    from torch.utils.data import DataLoader, Subset
+    from torchvision import datasets, transforms
 
-    val_datagen = ImageDataGenerator(rescale=1.0 / 255.0)
+    print(f"[AgriSense ML] Active Training Backend: PyTorch ({torch.__version__})")
 
-    train_generator = train_datagen.flow_from_directory(
-        train_dir,
-        target_size=img_size,
+    train_transform = transforms.Compose([
+        transforms.Resize((args.img_size, args.img_size)),
+        transforms.RandomHorizontalFlip(p=0.5),
+        transforms.RandomVerticalFlip(p=0.5),
+        transforms.RandomRotation(degrees=20),
+        transforms.RandomAffine(degrees=0, translate=(0.06, 0.06), scale=(0.94, 1.06)),
+        transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.03),
+        transforms.ToTensor(),
+    ])
+
+    val_transform = transforms.Compose([
+        transforms.Resize((args.img_size, args.img_size)),
+        transforms.ToTensor(),
+    ])
+
+    full_train_dataset = datasets.ImageFolder(str(train_dir), transform=train_transform)
+    val_dataset = datasets.ImageFolder(str(val_dir), transform=val_transform)
+
+    classes = full_train_dataset.classes
+    num_classes = len(classes)
+    print(f"\n[1/4] Discovered {num_classes} Classes from Directory:")
+    for idx, c in enumerate(classes):
+        print(f"  [{idx}] {c}")
+
+    # Training subset selection (0 = full 10,000 images)
+    if args.samples_per_class > 0:
+        targets = np.array(full_train_dataset.targets)
+        subset_indices = []
+        for c_idx in range(num_classes):
+            matches = np.where(targets == c_idx)[0]
+            subset_indices.extend(matches[:args.samples_per_class])
+        train_dataset = Subset(full_train_dataset, subset_indices)
+        print(f"\n[2/4] Training set: {len(train_dataset)} images ({args.samples_per_class}/class)")
+    else:
+        train_dataset = full_train_dataset
+        print(f"\n[2/4] Training set: {len(train_dataset)} images (full 10,000 image dataset)")
+
+    print(f"      Validation set: {len(val_dataset)} images")
+
+    train_loader = DataLoader(
+        train_dataset,
         batch_size=args.batch_size,
-        class_mode='categorical'
+        shuffle=True,
+        drop_last=False,
+        num_workers=0,
+        pin_memory=torch.cuda.is_available()
     )
-
-    val_generator = val_datagen.flow_from_directory(
-        val_dir,
-        target_size=img_size,
+    val_loader = DataLoader(
+        val_dataset,
         batch_size=args.batch_size,
-        class_mode='categorical',
-        shuffle=False
+        shuffle=False,
+        drop_last=False,
+        num_workers=0
     )
 
-    class_indices = train_generator.class_indices
-    num_classes = len(class_indices)
-    print(f"\n[AgriSense ML] Detected {num_classes} classes: {list(class_indices.keys())}")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = AgriSenseTomatoCNN(num_classes=num_classes).to(device)
+    total_params = get_parameter_count(model)
+    print(f"      Architecture: AgriSenseTomatoCNN ({total_params:,} parameters)")
 
-    # Save class indices JSON
-    class_map_file = os.path.join(args.output_dir, 'tomato_class_indices.json')
-    with open(class_map_file, 'w') as f:
-        json.dump(class_indices, f, indent=2)
-    print(f"[AgriSense ML] Class indices written to: {class_map_file}")
+    # Label smoothing regularizes confidence and improves out-of-sample accuracy
+    criterion = nn.CrossEntropyLoss(label_smoothing=0.06)
+    optimizer = optim.AdamW(model.parameters(), lr=0.0025, weight_decay=3e-4)
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs, eta_min=5e-6)
 
-    # Build and compile model
-    model = build_model(input_shape=(args.img_size, args.img_size, 3), num_classes=num_classes)
-    model.summary()
+    best_val_acc = 0.0
+    weights_path = output_dir / "tomato_cnn.pt"
+    checkpoint_path = output_dir / "tomato_checkpoint.pt"
+    history = {"train_loss": [], "val_loss": [], "val_acc": []}
 
-    # Callbacks
-    best_model_path = os.path.join(args.output_dir, 'tomato_cnn_10class_best.keras')
-    callbacks = [
-        ModelCheckpoint(best_model_path, monitor='val_accuracy', save_best_only=True, verbose=1),
-        EarlyStopping(monitor='val_loss', patience=6, restore_best_weights=True, verbose=1),
-        ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, verbose=1)
-    ]
+    print(f"\n[3/4] Training model for {args.epochs} epochs with Label Smoothing & CosineAnnealing...")
+    start_t = time.time()
 
-    # Model Training
-    print(f"\n[AgriSense ML] Beginning training for up to {args.epochs} epochs...")
-    history = model.fit(
-        train_generator,
-        epochs=args.epochs,
-        validation_data=val_generator,
-        callbacks=callbacks
+    for epoch in range(1, args.epochs + 1):
+        model.train()
+        running_loss = 0.0
+        for inputs, targets_t in train_loader:
+            inputs, targets_t = inputs.to(device), targets_t.to(device)
+            optimizer.zero_grad()
+            outputs = model(inputs)
+            loss = criterion(outputs, targets_t)
+            loss.backward()
+            optimizer.step()
+            running_loss += loss.item() * inputs.size(0)
+
+        scheduler.step()
+        train_loss = running_loss / len(train_dataset)
+
+        # Validation
+        model.eval()
+        val_loss = 0.0
+        val_targets, val_preds = [], []
+        with torch.no_grad():
+            for inputs, targets_t in val_loader:
+                inputs, targets_t = inputs.to(device), targets_t.to(device)
+                outputs = model(inputs)
+                loss = criterion(outputs, targets_t)
+                val_loss += loss.item() * inputs.size(0)
+                preds = outputs.argmax(dim=1)
+                val_targets.extend(targets_t.cpu().numpy().tolist())
+                val_preds.extend(preds.cpu().numpy().tolist())
+
+        val_loss = val_loss / len(val_dataset)
+        val_acc = sum(t == p for t, p in zip(val_targets, val_preds)) / len(val_targets)
+
+        history["train_loss"].append(round(train_loss, 4))
+        history["val_loss"].append(round(val_loss, 4))
+        history["val_acc"].append(round(val_acc, 4))
+
+        curr_lr = optimizer.param_groups[0]["lr"]
+        print(f"  Epoch [{epoch:02d}/{args.epochs:02d}] "
+              f"Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f} | Val Acc: {val_acc * 100:.2f}% | LR: {curr_lr:.6f}")
+
+        if val_acc >= best_val_acc:
+            best_val_acc = val_acc
+            # 1. Pure state_dict (tomato_cnn.pt)
+            torch.save(model.state_dict(), weights_path)
+            # 2. Checkpoint with metadata (tomato_checkpoint.pt)
+            torch.save({
+                "epoch": epoch,
+                "model_state_dict": model.state_dict(),
+                "classes": classes,
+                "num_classes": num_classes,
+                "val_accuracy": val_acc,
+                "parameter_count": total_params,
+            }, checkpoint_path)
+
+    train_duration = time.time() - start_t
+    print(f"\n  Finished training in {train_duration:.1f}s | Best Val Acc: {best_val_acc * 100:.2f}%")
+
+    # 3. Compute final evaluation metrics across all validation images
+    model.load_state_dict(torch.load(weights_path, map_location=device, weights_only=True))
+    model.eval()
+    eval_targets, eval_preds = [], []
+    with torch.no_grad():
+        for inputs, targets_t in val_loader:
+            inputs = inputs.to(device)
+            outputs = model(inputs)
+            eval_targets.extend(targets_t.numpy().tolist())
+            eval_preds.extend(outputs.argmax(dim=1).cpu().numpy().tolist())
+
+    metrics = compute_evaluation_matrix(eval_targets, eval_preds, classes)
+    metrics["parameter_count"] = total_params
+    metrics["history"] = history
+    metrics["best_weights_path"] = str(weights_path)
+
+    metrics_file = output_dir / "eval_metrics.json"
+    with open(metrics_file, "w") as f:
+        json.dump(metrics, f, indent=2)
+
+    # 4, 5, 6. Quantize to INT8 TFLite with 100 calibration samples, export metadata and C header
+    print(f"\n[4/4] Generating INT8 TFLite FlatBuffer (100 calibration samples), Metadata, and C Array...")
+    tflite_path, meta_path = convert_model_pipeline(
+        checkpoint_path=str(checkpoint_path),
+        dataset_dir=str(dataset_path),
+        output_tflite=str(output_dir / "model_quant_int8.tflite"),
+        output_metadata=str(output_dir / "training_metadata.json"),
+        num_samples=100,
     )
 
-    # Save Final Keras Model
-    final_keras_path = os.path.join(args.output_dir, 'tomato_cnn_10class_final.keras')
-    model.save(final_keras_path)
-    print(f"\n[AgriSense ML] Trained model successfully saved to: {final_keras_path}")
-
-    # Save weights file (replaces legacy keras_potato_trained_model_weights.h5)
-    weights_path = os.path.join(args.output_dir, 'tomato_cnn_weights.h5')
-    model.save_weights(weights_path)
-    print(f"[AgriSense ML] Model weights saved to: {weights_path}")
-
-    # Export INT8 Quantized TFLite model
-    tflite_path = os.path.join(args.output_dir, 'tomato_cnn_10class_int8.tflite')
-    export_quantized_tflite(model, val_generator, tflite_path)
-
-    # Print final evaluation metrics
-    val_loss, val_acc = model.evaluate(val_generator, verbose=0)
-    print(f"\n=======================================================")
-    print(f"Final Validation Loss:     {val_loss:.4f}")
-    print(f"Final Validation Accuracy: {val_acc * 100:.2f}%")
-    print(f"Artifacts saved in:        {args.output_dir}")
-    print(f"=======================================================\n")
+    print("\n" + "=" * 65)
+    print("  All AgriSense Model Artifacts Successfully Updated!")
+    print("=" * 65)
+    print(f"1. [tomato_cnn.pt]            -> {weights_path}")
+    print(f"2. [tomato_checkpoint.pt]     -> {checkpoint_path}")
+    print(f"3. [eval_metrics.json]        -> {metrics_file}")
+    print(f"4. [model_quant_int8.tflite]  -> {tflite_path}")
+    print(f"5. [training_metadata.json]   -> {meta_path}")
+    print(f"6. [model_data.h]             -> {output_dir / 'model_data.h'}")
+    print(f"   [firmware/model_data.h]    -> {FIRMWARE_VISION_DIR / 'model_data.h'}")
+    print("=" * 65 + "\n")
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="AgriSense Tomato CNN 10-Class Training Pipeline")
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    default_output = os.path.abspath(os.path.join(script_dir, "..", "models"))
-
-    parser.add_argument('--dataset-dir', type=str, default=script_dir,
-                        help="Path containing 'train' and 'val' subdirectories (default: script dir)")
-    parser.add_argument('--output-dir', type=str, default=default_output,
-                        help="Directory to save trained models and TFLite files")
-    parser.add_argument('--epochs', type=int, default=20,
-                        help="Maximum training epochs (default: 20)")
+    parser = argparse.ArgumentParser(description="Train AgriSense CNN on 10-class PlantVillage dataset.")
+    parser.add_argument('--dataset-dir', type=str, default=str(SCRIPT_DIR),
+                        help="Path containing 'train' and 'val' subdirectories")
+    parser.add_argument('--output-dir', type=str, default=str(MODELS_DIR),
+                        help="Project models output directory (default: ml/models)")
+    parser.add_argument('--epochs', type=int, default=16,
+                        help="Number of training epochs (default: 16)")
     parser.add_argument('--batch-size', type=int, default=64,
                         help="Batch size (default: 64)")
-    parser.add_argument('--img-size', type=int, default=128,
-                        help="Input image resolution in pixels (default: 128)")
+    parser.add_argument('--img-size', type=int, default=96,
+                        help="Input resolution in pixels (default: 96)")
+    parser.add_argument('--samples-per-class', type=int, default=0,
+                        help="Training samples per class (default: 0 for all 10,000 images)")
 
     args = parser.parse_args()
-    train_pipeline(args)
+    run_training_pipeline(args)

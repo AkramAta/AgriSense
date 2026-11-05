@@ -5,7 +5,6 @@ Generates model_data.h with proper 16-byte alignment and length variable.
 """
 
 import argparse
-import sys
 from pathlib import Path
 
 
