@@ -148,10 +148,15 @@ class GeminiService {
   /// Leaf disease diagnosis using the AgriSense 10-Class Tomato CNN Model (Edge / Vision Node).
   Future<Map<String, dynamic>> diagnoseLeafImage(Uint8List imageBytes,
       {String? imageName, String? visionHost}) async {
-    // 1. Query the Vision Node / Model inference endpoint directly
-    final host = visionHost ?? '10.0.2.2:8081';
-    final candidates = [host, '127.0.0.1:8081', '192.168.1.15:8081', '192.168.4.2:8081'];
-    for (final cand in candidates) {
+    // 1. If an explicit or candidate Vision Node / Edge server is reachable, query it
+    final targets = <String>[];
+    if (visionHost != null && visionHost.trim().isNotEmpty) {
+      targets.add(visionHost.trim());
+    }
+    // Check local dev/edge endpoints with fast 500ms timeout so mobile never hangs
+    targets.addAll(['127.0.0.1:8081', '192.168.1.15:8081', '10.0.2.2:8081', '192.168.4.2:8081']);
+
+    for (final cand in targets) {
       try {
         final cleanCand = cand.replaceFirst(RegExp(r'^https?://'), '');
         final uri = Uri.parse('http://$cleanCand/diagnose');
@@ -164,20 +169,20 @@ class GeminiService {
               },
               body: imageBytes,
             )
-            .timeout(const Duration(milliseconds: 3000));
+            .timeout(const Duration(milliseconds: 650));
         if (res.statusCode == 200) {
           final data = json.decode(res.body) as Map<String, dynamic>;
           data['source'] = 'AgriSense TFLite INT8 CNN Model';
           return data;
         }
       } catch (_) {
-        // Continue to offline edge model
+        // Continue to next or fallback immediately
       }
     }
 
-    // 2. Offline Edge Model Pathology Engine (INT8 Feature Classifier)
+    // 2. Standalone On-Device Pathology Engine (Instant, runs anywhere offline without servers)
     final localResult = _performLocalPathologyAnalysis(imageBytes, imageName);
-    localResult['source'] = 'AgriSense 10-Class CNN Model';
+    localResult['source'] = 'AgriSense 10-Class Mobile Model';
     return localResult;
   }
 

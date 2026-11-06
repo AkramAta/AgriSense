@@ -28,6 +28,11 @@ class SensorDashboardScreen extends StatelessWidget {
         title: const Text('Sensor Dashboard'),
         actions: [
           IconButton(
+            icon: Icon(farm.isStandaloneDemoMode ? Icons.smartphone : Icons.cell_tower),
+            tooltip: farm.isStandaloneDemoMode ? 'Standalone Mobile Mode (Active)' : 'Toggle Standalone Mobile Mode',
+            onPressed: () => farm.toggleStandaloneDemoMode(!farm.isStandaloneDemoMode),
+          ),
+          IconButton(
             icon: Icon(farm.isPolling ? Icons.pause_circle_outline : Icons.play_circle_outline),
             tooltip: farm.isPolling ? 'Pause Polling' : 'Resume Polling',
             onPressed: () {
@@ -74,14 +79,18 @@ class SensorDashboardScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            farm.isConnectedIrrigation ? 'ESP32 Node Online' : 'ESP32 Node Offline',
+                            farm.isStandaloneDemoMode
+                                ? 'Standalone Mobile Mode'
+                                : (farm.isConnectedIrrigation ? 'ESP32 Node Online' : 'ESP32 Node Offline'),
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               color: farm.isConnectedIrrigation ? Colors.green.shade900 : Colors.red.shade900,
                             ),
                           ),
                           Text(
-                            'Host: ${farm.irrigationHost}',
+                            farm.isStandaloneDemoMode
+                                ? 'Simulating real-time field telemetry without hardware'
+                                : 'Host: ${farm.irrigationHost}',
                             style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
                           ),
                         ],
