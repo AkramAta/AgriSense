@@ -11,6 +11,7 @@ import json
 import os
 import sys
 from decimal import Decimal
+from typing import Any
 import boto3
 import numpy as np
 from PIL import Image
@@ -30,9 +31,9 @@ except ImportError:
     )
 
 # Global model cache across warm Lambda invocations
-_INTERPRETER = None
-_INPUT_DETAILS = None
-_OUTPUT_DETAILS = None
+_INTERPRETER: Any = None
+_INPUT_DETAILS: Any = None
+_OUTPUT_DETAILS: Any = None
 
 
 def get_s3_client():
@@ -43,9 +44,9 @@ def get_dynamodb_resource():
     return boto3.resource("dynamodb")
 
 
-def load_interpreter():
+def load_interpreter() -> tuple[Any, Any, Any]:
     global _INTERPRETER, _INPUT_DETAILS, _OUTPUT_DETAILS
-    if _INTERPRETER is not None:
+    if _INTERPRETER is not None and _INPUT_DETAILS is not None and _OUTPUT_DETAILS is not None:
         return _INTERPRETER, _INPUT_DETAILS, _OUTPUT_DETAILS
 
     tflite = None
@@ -57,7 +58,7 @@ def load_interpreter():
         try:
             tflite = importlib.import_module(module_name)
             break
-        except (ImportError, ModuleNotFoundError):
+        except ImportError:
             continue
 
     model_candidates = [
@@ -272,17 +273,22 @@ def run_inference(image_bytes: bytes) -> dict:
 
     # 2. Fallback Engine: INT8 Quantized Edge CNN Model (84.35% Acc)
     interpreter, in_details, out_details = load_interpreter()
+    if not in_details or not out_details:
+        raise RuntimeError("Model input or output tensor details could not be loaded")
 
-    in_scale, in_zp = _extract_quantization_params(in_details[0])
+    first_in = in_details[0]
+    first_out = out_details[0]
+
+    in_scale, in_zp = _extract_quantization_params(first_in)
 
     input_data = preprocess_image_to_int8(image_bytes, in_scale, in_zp)
-    interpreter.set_tensor(in_details[0]["index"], input_data)
+    interpreter.set_tensor(first_in["index"], input_data)
     interpreter.invoke()
 
-    output_data = interpreter.get_tensor(out_details[0]["index"])  # Shape: [1, 10]
+    output_data = interpreter.get_tensor(first_out["index"])  # Shape: [1, 10]
     raw_logits = output_data[0]
 
-    out_scale, out_zp = _extract_quantization_params(out_details[0])
+    out_scale, out_zp = _extract_quantization_params(first_out)
 
     # Dequantize to probabilities
     probs = [(float(val) - out_zp) * out_scale for val in raw_logits]
