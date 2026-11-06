@@ -22,6 +22,20 @@ venv/
 env/
 ENV/
 
+# Environment Secrets & Private Credentials
+.env
+.env.*
+*.env
+!.env.example
+secrets.json
+credentials.json
+google-services.json
+GoogleService-Info.plist
+*.jks
+*.keystore
+*.key
+*.pem
+
 # AWS SAM
 .aws-sam/
 

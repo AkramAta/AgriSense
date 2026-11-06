@@ -144,7 +144,7 @@ class Esp32Service {
   final http.Client _client;
   final Duration timeout;
 
-  Esp32Service({http.Client? client, this.timeout = const Duration(seconds: 4)})
+  Esp32Service({http.Client? client, this.timeout = const Duration(milliseconds: 1500)})
       : _client = client ?? http.Client();
 
   Uri _buildUri(String host, String path, [Map<String, String>? query]) {

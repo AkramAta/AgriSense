@@ -95,6 +95,8 @@ class FarmProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  int _consecutiveFailures = 0;
+
   Future<void> pollTelemetry() async {
     if (isStandaloneDemoMode) {
       _generateDemoReading();
@@ -107,9 +109,18 @@ class FarmProvider extends ChangeNotifier {
       latestStatus = status;
       isConnectedIrrigation = true;
       lastError = null;
+      _consecutiveFailures = 0;
     } catch (e) {
       isConnectedIrrigation = false;
       lastError = e.toString();
+      _consecutiveFailures++;
+      // If hardware is not detected, seamlessly switch to standalone mobile simulation
+      // so the device network stack never hangs or delays other operations
+      if (_consecutiveFailures >= 2) {
+        isStandaloneDemoMode = true;
+        _consecutiveFailures = 0;
+        _generateDemoReading();
+      }
     }
     notifyListeners();
   }

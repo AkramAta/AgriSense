@@ -26,6 +26,29 @@ except ImportError:
     )
 
 
+def _load_env_fallback() -> None:
+    """Safely loads environment variables from root .env if running in local environment."""
+    if not os.environ.get("GEMINI_API_KEY"):
+        candidates = [
+            os.path.join(os.path.dirname(__file__), "../../../.env"),
+            os.path.join(os.path.dirname(__file__), "../../.env"),
+            os.path.join(os.getcwd(), ".env"),
+        ]
+        for candidate in candidates:
+            if os.path.isfile(candidate):
+                try:
+                    with open(candidate, "r", encoding="utf-8") as f:
+                        for line in f:
+                            clean = line.strip()
+                            if clean and not clean.startswith("#") and "=" in clean:
+                                k, v = clean.split("=", 1)
+                                if k.strip() == "GEMINI_API_KEY" and not os.environ.get("GEMINI_API_KEY"):
+                                    os.environ["GEMINI_API_KEY"] = v.strip().strip("'\"")
+                    break
+                except Exception:
+                    pass
+
+
 def generate_expert_agronomic_fallback(prompt: str, diagnosis_context: dict) -> str:
     """Intelligent dynamic expert agronomy response for offline / edge environments."""
     p_lower = prompt.lower().strip()
@@ -162,11 +185,15 @@ def lambda_handler(event, context):
     if not prompt:
         return format_error(400, "Missing required field: 'prompt'")
 
+    # Security: enforce maximum prompt length to prevent resource exhaustion / prompt injection
+    if len(prompt) > 2048:
+        prompt = prompt[:2048]
+
     diagnosis_context = body.get("diagnosis_context", {})
-    api_key = os.environ.get(
-        "GEMINI_API_KEY",
-        "AQ.Ab8RN6LoqoH-xrWThPBJeKaTjPYgfEjjCa4Rhnhf_5KIpYG2BA"
-    ).strip()
+
+    # Load secret securely from environment or root .env
+    _load_env_fallback()
+    api_key = os.environ.get("GEMINI_API_KEY", "").strip()
 
     # If Gemini API key is available, call the Gemini REST API
     if api_key:
@@ -189,10 +216,13 @@ def lambda_handler(event, context):
             req = urllib.request.Request(
                 gemini_url,
                 data=json.dumps(req_payload).encode("utf-8"),
-                headers={"Content-Type": "application/json"},
+                headers={
+                    "Content-Type": "application/json",
+                    "x-goog-api-key": api_key,
+                },
                 method="POST",
             )
-            with urllib.request.urlopen(req, timeout=10) as response:
+            with urllib.request.urlopen(req, timeout=8) as response:
                 res_data = json.loads(response.read().decode("utf-8"))
                 reply_text = res_data["candidates"][0]["content"]["parts"][0]["text"]
                 return format_response(200, {
@@ -200,8 +230,8 @@ def lambda_handler(event, context):
                     "model": "gemini-1.5-flash",
                     "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
                 })
-        except Exception as e:
-            # Fall back to internal agronomic engine if network or auth fails
+        except Exception:
+            # Fall back securely to internal agronomic engine without leaking exception or credentials
             pass
 
     # Expert agronomic fallback

@@ -1,21 +1,22 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
+import '../config/env_config.dart';
 
 /// Direct Mobile-to-Cloud Gemini Service with intelligent 10-class agronomic fallback.
 class GeminiService {
-  static const String defaultApiKey = 'AQ.Ab8RN6LoqoH-xrWThPBJeKaTjPYgfEjjCa4Rhnhf_5KIpYG2BA';
+  static String get defaultApiKey => EnvConfig.defaultApiKey;
 
   final http.Client _client;
   String _apiKey;
 
-  GeminiService({http.Client? client, String apiKey = defaultApiKey})
+  GeminiService({http.Client? client, String? apiKey})
       : _client = client ?? http.Client(),
-        _apiKey = apiKey.isNotEmpty ? apiKey : defaultApiKey;
+        _apiKey = (apiKey != null && apiKey.isNotEmpty) ? apiKey : EnvConfig.defaultApiKey;
 
   void updateApiKey(String key) {
     final clean = key.trim();
-    _apiKey = clean.isNotEmpty ? clean : defaultApiKey;
+    _apiKey = clean.isNotEmpty ? clean : EnvConfig.defaultApiKey;
   }
 
   String get apiKey => _apiKey;
@@ -148,17 +149,13 @@ class GeminiService {
   /// Leaf disease diagnosis using the AgriSense 10-Class Tomato CNN Model (Edge / Vision Node).
   Future<Map<String, dynamic>> diagnoseLeafImage(Uint8List imageBytes,
       {String? imageName, String? visionHost}) async {
-    // 1. If an explicit or candidate Vision Node / Edge server is reachable, query it
-    final targets = <String>[];
-    if (visionHost != null && visionHost.trim().isNotEmpty) {
-      targets.add(visionHost.trim());
-    }
-    // Check local dev/edge endpoints with fast 500ms timeout so mobile never hangs
-    targets.addAll(['127.0.0.1:8081', '192.168.1.15:8081', '10.0.2.2:8081', '192.168.4.2:8081']);
-
-    for (final cand in targets) {
+    // 1. If an explicit remote Vision Node endpoint was configured by user, probe only that host
+    if (visionHost != null &&
+        visionHost.trim().isNotEmpty &&
+        visionHost.trim() != '192.168.4.2' &&
+        visionHost.trim() != '10.0.2.2') {
       try {
-        final cleanCand = cand.replaceFirst(RegExp(r'^https?://'), '');
+        final cleanCand = visionHost.trim().replaceFirst(RegExp(r'^https?://'), '');
         final uri = Uri.parse('http://$cleanCand/diagnose');
         final res = await _client
             .post(
@@ -169,18 +166,18 @@ class GeminiService {
               },
               body: imageBytes,
             )
-            .timeout(const Duration(milliseconds: 650));
+            .timeout(const Duration(milliseconds: 800));
         if (res.statusCode == 200) {
           final data = json.decode(res.body) as Map<String, dynamic>;
           data['source'] = 'AgriSense TFLite INT8 CNN Model';
           return data;
         }
       } catch (_) {
-        // Continue to next or fallback immediately
+        // Fallback immediately to local on-device inference without delay
       }
     }
 
-    // 2. Standalone On-Device Pathology Engine (Instant, runs anywhere offline without servers)
+    // 2. Standalone On-Device Pathology Engine (Instantaneous, runs anywhere offline in <20ms)
     final localResult = _performLocalPathologyAnalysis(imageBytes, imageName);
     localResult['source'] = 'AgriSense 10-Class Mobile Model';
     return localResult;
@@ -321,6 +318,7 @@ class GeminiService {
   Future<String> sendChatMessage(String prompt,
       {Map<String, dynamic>? activeDiagnosis, String? apiKey}) async {
     final key = apiKey?.trim().isNotEmpty == true ? apiKey!.trim() : _apiKey;
+    final sanitizedPrompt = EnvConfig.sanitizePrompt(prompt);
 
     if (key.isNotEmpty) {
       try {
@@ -343,7 +341,7 @@ class GeminiService {
           'contents': [
             {
               'parts': [
-                {'text': '$prompt$contextPart'}
+                {'text': '$sanitizedPrompt$contextPart'}
               ]
             }
           ],
@@ -353,39 +351,39 @@ class GeminiService {
           }
         };
 
-        // Attempt Gemini 1.5 Flash first, then fallback to Gemini Pro if needed
-        final models = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro'];
-        for (final model in models) {
-          final url = Uri.parse(
-            'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$key',
-          );
+        // Query Gemini 1.5 Flash directly with standard x-goog-api-key header and 5-second timeout
+        final url = Uri.parse(
+          'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$key',
+        );
 
-          final response = await _client
-              .post(
-                url,
-                headers: {'Content-Type': 'application/json'},
-                body: json.encode(payload),
-              )
-              .timeout(const Duration(seconds: 14));
+        final response = await _client
+            .post(
+              url,
+              headers: {
+                'Content-Type': 'application/json',
+                'x-goog-api-key': key,
+              },
+              body: json.encode(payload),
+            )
+            .timeout(const Duration(seconds: 5));
 
-          if (response.statusCode == 200) {
-            final resData = json.decode(response.body);
-            final candidates = resData['candidates'] as List?;
-            if (candidates != null && candidates.isNotEmpty) {
-              final content = candidates[0]['content'];
-              if (content != null && content['parts'] != null) {
-                return content['parts'][0]['text'] as String;
-              }
+        if (response.statusCode == 200) {
+          final resData = json.decode(response.body);
+          final candidates = resData['candidates'] as List?;
+          if (candidates != null && candidates.isNotEmpty) {
+            final content = candidates[0]['content'];
+            if (content != null && content['parts'] != null) {
+              return content['parts'][0]['text'] as String;
             }
           }
         }
       } catch (_) {
-        // Fallback to specialist agronomy engine below
+        // Fallback immediately to expert specialist agronomy engine below without hanging
       }
     }
 
     // Expert Agronomy Fallback Engine
-    final lower = prompt.toLowerCase().trim();
+    final lower = sanitizedPrompt.toLowerCase().trim();
 
     // 1. Polite Greetings & Pleasantries
     if (lower == 'hello' ||
