@@ -103,21 +103,41 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            const DrawerHeader(
-              decoration: BoxDecoration(
+            DrawerHeader(
+              decoration: const BoxDecoration(
                 color: Color(0xFF1B5E20),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  Icon(Icons.eco, size: 48, color: Colors.white),
-                  SizedBox(height: 8),
-                  Text(
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Image.asset(
+                      'assets/images/logo.png',
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const Icon(Icons.eco, size: 36, color: Color(0xFF1B5E20)),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
                     'AgriSense Precision IoT',
                     style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                  Text(
+                  const Text(
                     'Smart Irrigation & Pathology',
                     style: TextStyle(color: Colors.white70, fontSize: 12),
                   ),
