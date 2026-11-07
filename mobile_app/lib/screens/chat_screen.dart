@@ -263,7 +263,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     TextButton(
                       onPressed: () async {
                         await diag.setApiKey('');
-                        if (context.mounted) Navigator.pop(ctx);
+                        if (ctx.mounted) Navigator.pop(ctx);
                       },
                       child: const Text('Reset', style: TextStyle(color: Colors.red)),
                     ),
@@ -274,7 +274,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     ElevatedButton(
                       onPressed: () async {
                         await diag.setApiKey(keyController.text.trim());
-                        if (context.mounted) Navigator.pop(ctx);
+                        if (ctx.mounted) Navigator.pop(ctx);
                       },
                       child: const Text('Save'),
                     ),

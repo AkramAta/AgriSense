@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import '../config/env_config.dart';
 import '../providers/diagnosis_provider.dart';
 import 'chat_screen.dart';
 
@@ -20,6 +21,14 @@ class DiseaseDiagnosisScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Disease Scanner'),
         actions: [
+          IconButton(
+            icon: Icon(
+              diag.hasApiKey ? Icons.vpn_key : Icons.vpn_key_outlined,
+              color: diag.hasApiKey ? Colors.amber.shade300 : null,
+            ),
+            tooltip: 'Configure Gemini Vision Key',
+            onPressed: () => _showApiKeyDialog(context, diag),
+          ),
           if (active != null)
             IconButton(
               icon: const Icon(Icons.refresh),
@@ -73,25 +82,45 @@ class DiseaseDiagnosisScreen extends StatelessWidget {
           ),
           const SizedBox(height: 8),
 
-          // Edge Model Status Indicator
+          // Engine Status Indicator
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: const Color(0xFFE8F5E9),
+              color: diag.hasApiKey ? const Color(0xFFE8F5E9) : const Color(0xFFFFF8E1),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFA5D6A7)),
+              border: Border.all(
+                color: diag.hasApiKey ? const Color(0xFFA5D6A7) : const Color(0xFFFFE082),
+              ),
             ),
-            child: const Row(
+            child: Row(
               children: [
-                Icon(Icons.memory, size: 18, color: Color(0xFF1B5E20)),
-                SizedBox(width: 8),
+                Icon(
+                  diag.hasApiKey ? Icons.auto_awesome : Icons.memory,
+                  size: 18,
+                  color: diag.hasApiKey ? const Color(0xFF1B5E20) : const Color(0xFFF57F17),
+                ),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Engine: AgriSense High-Accuracy Disease Model (Mobile Camera)',
+                    diag.hasApiKey
+                        ? 'Engine: Gemini 1.5 Flash Vision Pathologist (Active)'
+                        : 'Engine: AgriSense On-Device Diagnostic Model (Offline)',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF1B5E20),
+                      color: diag.hasApiKey ? const Color(0xFF1B5E20) : const Color(0xFFF57F17),
+                    ),
+                  ),
+                ),
+                InkWell(
+                  onTap: () => _showApiKeyDialog(context, diag),
+                  child: Text(
+                    diag.hasApiKey ? 'Settings' : 'Set Key',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: diag.hasApiKey ? Colors.green.shade900 : Colors.amber.shade900,
+                      decoration: TextDecoration.underline,
                     ),
                   ),
                 ),
@@ -338,6 +367,101 @@ class DiseaseDiagnosisScreen extends StatelessWidget {
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  void _showApiKeyDialog(BuildContext context, DiagnosisProvider diag) {
+    final keyController = TextEditingController(text: diag.apiKey);
+    final obscureNotifier = ValueNotifier<bool>(true);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.vpn_key, color: Colors.indigo),
+            SizedBox(width: 8),
+            Text('Gemini Vision Key'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.lock, size: 16, color: Colors.green),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Current: ${EnvConfig.maskApiKey(diag.apiKey)}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'Gemini 1.5 Flash Vision accurately classifies camera leaf photos with >96% accuracy. Your key is stored securely on device.',
+              style: TextStyle(fontSize: 11, color: Colors.black87),
+            ),
+            const SizedBox(height: 12),
+            ValueListenableBuilder<bool>(
+              valueListenable: obscureNotifier,
+              builder: (context, isObscured, _) {
+                return TextField(
+                  controller: keyController,
+                  obscureText: isObscured,
+                  decoration: InputDecoration(
+                    labelText: 'Google Gemini API Key',
+                    border: const OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        isObscured ? Icons.visibility_off : Icons.visibility,
+                        size: 20,
+                      ),
+                      tooltip: isObscured ? 'Show Key' : 'Hide Key',
+                      onPressed: () => obscureNotifier.value = !isObscured,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await diag.setApiKey('');
+              if (ctx.mounted) Navigator.pop(ctx);
+            },
+            child: const Text('Reset', style: TextStyle(color: Colors.red)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              await diag.setApiKey(keyController.text.trim());
+              if (ctx.mounted) Navigator.pop(ctx);
+            },
+            child: const Text('Save'),
+          ),
         ],
       ),
     );
