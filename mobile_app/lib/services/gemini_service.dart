@@ -683,7 +683,32 @@ Return a valid JSON object ONLY (no markdown backticks, no markdown fencing, no 
       }
     }
 
-    // 5. Chemical Spray, Fungicides, Treatments
+    // 5. Spray Dosage, Frequency & Intervals ("how often", "frequency", "interval")
+    if (lower.contains('often') ||
+        lower.contains('frequency') ||
+        lower.contains('interval') ||
+        lower.contains('dosage') ||
+        lower.contains('how much') ||
+        (lower.contains('spray') && (lower.contains('when') || lower.contains('time') || lower.contains('repeat')))) {
+      if (activeDiagnosis != null &&
+          activeDiagnosis.containsKey('class_name')) {
+        final disease = _formatClassName(activeDiagnosis['class_name']);
+        final chemical = activeDiagnosis['chemical_control'] ??
+            'Apply Chlorothalonil or Mancozeb every 7-14 days.';
+        return '**Spray Dosage & Application Protocol for $disease:**\n\n'
+            '• **Application Frequency & Interval:** Spray every 7 to 10 days during warm, humid conditions or after heavy rain.\n'
+            '• **Optimal Timing Window:** Spray between 6:00 AM – 9:00 AM or in late afternoon after 5:00 PM to avoid midday leaf scorch.\n'
+            '• **Prescribed Product:** $chemical\n'
+            '• **Canopy Spray Coverage:** Ensure full coverage including lower leaf surfaces where spore germination initiates.\n'
+            '• **Rotational Resistance:** Rotate fungicides with different FRAC codes every 2 to 3 applications.';
+      } else {
+        return '**Spray Dosage & Application Protocol:**\n\n'
+            '• **Interval:** Spray every 7 to 10 days during high disease pressure.\n'
+            '• **Application Timing:** Spray early morning (6:00 AM – 9:00 AM) in calm weather.';
+      }
+    }
+
+    // 6. Chemical Spray, Fungicides, Treatments
     if (lower.contains('spray') ||
         lower.contains('chemical') ||
         lower.contains('fungicide') ||
