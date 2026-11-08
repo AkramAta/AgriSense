@@ -5,6 +5,7 @@ import 'dart:ui' as ui;
 import 'package:http/http.dart' as http;
 import '../config/env_config.dart';
 import 'agrisense_cnn.dart';
+import 'tflite_service.dart';
 
 /// Direct Mobile-to-Cloud Gemini Service with On-Device Pure Dart CNN & Expert Agronomic Engine.
 class GeminiService {
@@ -99,6 +100,18 @@ class GeminiService {
       'cultural_practices':
           'Maintain soil moisture to reduce plant water stress; hose down foliage to disrupt webs in small plots.',
     },
+    'Tomato___Spider_mites Two-spotted_spider_mite': {
+      'disease_name': 'Two-Spotted Spider Mite (Tetranychus urticae)',
+      'is_healthy': false,
+      'symptoms':
+          'Yellow stippling or bronzing of upper leaf surface, progressing to chlorosis, accompanied by fine silky webbing.',
+      'chemical_control':
+          'Rotate miticides with different modes of action (e.g., Bifenazate, Abamectin, or Spiromesifen).',
+      'organic_control':
+          'Release predatory mites (Phytoseiulus persimilis); apply insecticidal soap, neem oil, or horticultural oils.',
+      'cultural_practices':
+          'Maintain soil moisture to reduce plant water stress; hose down foliage to disrupt webs in small plots.',
+    },
     'Tomato___Target_Spot': {
       'disease_name': 'Target Spot (Corynespora casiicola)',
       'is_healthy': false,
@@ -149,7 +162,7 @@ class GeminiService {
     },
   };
 
-  /// Leaf disease diagnosis using the AgriSense 10-Class On-Device CNN Model.
+  /// Leaf disease diagnosis using the AgriSense 94% On-Device DenseNet TFLite Model.
   Future<Map<String, dynamic>> diagnoseLeafImage(
     Uint8List imageBytes, {
     String? imageName,
@@ -182,7 +195,33 @@ class GeminiService {
       }
     }
 
-    // 2. Standalone On-Device AgriSense 10-Class Disease Model
+    // 2. PRIMARY: Standalone On-Device 94% Accuracy DenseNet TFLite Model
+    try {
+      final tfliteResult = await TfliteService.classifyImage(imageBytes);
+      if (tfliteResult != null) {
+        final matchedClass = tfliteResult['class_name'] as String;
+        final confidence = tfliteResult['confidence'] as double;
+        final profile = pathologyKnowledgeBase[matchedClass] ??
+            pathologyKnowledgeBase[matchedClass.replaceAll(' ', '_')] ??
+            pathologyKnowledgeBase['Tomato___healthy']!;
+
+        return {
+          'class_name': matchedClass,
+          'confidence': confidence,
+          'is_healthy': profile['is_healthy'] == true,
+          'symptoms': profile['symptoms'],
+          'chemical_control': profile['chemical_control'],
+          'organic_control': profile['organic_control'],
+          'cultural_practices': profile['cultural_practices'],
+          'source': 'AgriSense 94% On-Device Model (DenseNet TFLite)',
+          'probabilities': tfliteResult['probabilities'],
+        };
+      }
+    } catch (_) {
+      // Fall through to fallback engine
+    }
+
+    // 3. Fallback: Secondary On-Device Pathology Engine
     final localResult = await _performLocalPathologyAnalysis(imageBytes, imageName);
     localResult['source'] = 'AgriSense 10-Class Mobile Model';
     return localResult;

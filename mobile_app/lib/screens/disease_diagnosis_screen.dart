@@ -93,14 +93,14 @@ class DiseaseDiagnosisScreen extends StatelessWidget {
             child: const Row(
               children: [
                 Icon(
-                  Icons.memory,
+                  Icons.auto_awesome,
                   size: 18,
                   color: Color(0xFF1B5E20),
                 ),
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Engine: AgriSense 10-Class Disease Model (On-Device Edge)',
+                    'Engine: AgriSense 94% On-Device Neural Network (TFLite)',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,

@@ -209,6 +209,24 @@ class _ChatScreenState extends State<ChatScreen> {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  InkWell(
+                    onTap: () => diag.clearActiveDiagnosis(),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.indigo.shade100,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.close, size: 14, color: Colors.indigo),
+                          SizedBox(width: 4),
+                          Text('Clear', style: TextStyle(fontSize: 11, color: Colors.indigo, fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -274,6 +292,18 @@ class _ChatScreenState extends State<ChatScreen> {
             child: Row(
               children: activeDiag != null
                   ? [
+                      ActionChip(
+                        avatar: const Icon(Icons.help_outline, size: 16),
+                        label: const Text('Help Me'),
+                        onPressed: () => _send('help me'),
+                      ),
+                      const SizedBox(width: 6),
+                      ActionChip(
+                        avatar: const Icon(Icons.lightbulb_outline, size: 16),
+                        label: const Text('Explain Simply'),
+                        onPressed: () => _send('I don\'t understand, please explain'),
+                      ),
+                      const SizedBox(width: 6),
                       ActionChip(
                         avatar: const Icon(Icons.format_list_numbered, size: 16),
                         label: const Text('Action Steps'),

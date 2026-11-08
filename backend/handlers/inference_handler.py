@@ -65,8 +65,11 @@ def load_interpreter() -> tuple[Any, Any, Any]:
 
     model_candidates = [
         os.environ.get("MODEL_PATH", ""),
+        os.path.join(os.path.dirname(__file__), "../../ml/models/tomato_model_94_accuracy.tflite"),
+        os.path.join(os.path.dirname(__file__), "tomato_model_94_accuracy.tflite"),
         os.path.join(os.path.dirname(__file__), "../../ml/models/model_quant_int8.tflite"),
         os.path.join(os.path.dirname(__file__), "model_quant_int8.tflite"),
+        "/opt/tomato_model_94_accuracy.tflite",
         "/opt/model_quant_int8.tflite",
     ]
 
@@ -227,12 +230,52 @@ def load_densenet_model():
 
 def run_inference(image_bytes: bytes) -> dict:
     """
-    Executes disease inference using the 96.34% DenseNet-121 Mobile Camera model
-    with seamless fallback to the quantized INT8 CNN engine.
+    Executes disease inference using the 94% Accuracy DenseNet TFLite model
+    with seamless fallback to PyTorch and INT8 engines.
     """
     classes = get_classes()
 
-    # 1. Primary Engine: High-Accuracy DenseNet-121 Mobile Camera Model (96.34% Acc)
+    # 1. Primary Engine: 94% Accuracy DenseNet TFLite Model
+    try:
+        interpreter, in_details, out_details = load_interpreter()
+        if in_details and out_details:
+            first_in = in_details[0]
+            first_out = out_details[0]
+
+            if first_in.get("dtype") == np.float32:
+                img_size = first_in["shape"][1] if len(first_in.get("shape", [])) > 1 else 256
+                img = Image.open(io.BytesIO(image_bytes)).convert("RGB").resize((img_size, img_size))
+                input_data = np.expand_dims(np.array(img, dtype=np.float32) / 255.0, axis=0)
+                interpreter.set_tensor(first_in["index"], input_data)
+                interpreter.invoke()
+                output_data = interpreter.get_tensor(first_out["index"])
+                probs = [float(val) for val in output_data[0]]
+
+                top_idx = int(np.argmax(probs))
+                top_conf = float(probs[top_idx])
+                class_name = classes[top_idx] if top_idx < len(classes) else "Tomato___healthy"
+                is_healthy = (class_name == "Tomato___healthy")
+
+                all_probs = {classes[i] if i < len(classes) else f"Class_{i}": round(p, 4) for i, p in enumerate(probs)}
+                treatment = TREATMENT_RECOMMENDATIONS.get(class_name, TREATMENT_RECOMMENDATIONS.get("Tomato___healthy", {}))
+
+                return {
+                    "class_index": top_idx,
+                    "class_name": class_name,
+                    "confidence": top_conf,
+                    "is_healthy": is_healthy,
+                    "all_probabilities": all_probs,
+                    "disease_name": treatment.get("disease_name", class_name),
+                    "symptoms": treatment.get("symptoms", ""),
+                    "chemical_control": treatment.get("chemical_control", ""),
+                    "organic_control": treatment.get("organic_control", ""),
+                    "cultural_practices": treatment.get("cultural_practices", ""),
+                    "source": "AgriSense 94% DenseNet TFLite Model",
+                }
+    except Exception as e:
+        print(f"[Inference] TFLite primary execution error: {e}")
+
+    # 2. Secondary Engine: PyTorch DenseNet-121 Checkpoint
     densenet = load_densenet_model()
     if densenet is not None:
         try:
@@ -281,23 +324,33 @@ def run_inference(image_bytes: bytes) -> dict:
     first_in = in_details[0]
     first_out = out_details[0]
 
-    in_scale, in_zp = _extract_quantization_params(first_in)
+    if first_in.get("dtype") == np.float32:
+        # Float32 model (e.g. 94% accuracy DenseNet TFLite model, shape [1, 256, 256, 3])
+        img_size = first_in["shape"][1] if len(first_in.get("shape", [])) > 1 else 256
+        img = Image.open(io.BytesIO(image_bytes)).convert("RGB").resize((img_size, img_size))
+        input_data = np.expand_dims(np.array(img, dtype=np.float32) / 255.0, axis=0)
+        interpreter.set_tensor(first_in["index"], input_data)
+        interpreter.invoke()
+        output_data = interpreter.get_tensor(first_out["index"])
+        probs = [float(val) for val in output_data[0]]
+    else:
+        # INT8 Quantized model
+        in_scale, in_zp = _extract_quantization_params(first_in)
+        input_data = preprocess_image_to_int8(image_bytes, in_scale, in_zp)
+        interpreter.set_tensor(first_in["index"], input_data)
+        interpreter.invoke()
 
-    input_data = preprocess_image_to_int8(image_bytes, in_scale, in_zp)
-    interpreter.set_tensor(first_in["index"], input_data)
-    interpreter.invoke()
+        output_data = interpreter.get_tensor(first_out["index"])  # Shape: [1, 10]
+        raw_logits = output_data[0]
 
-    output_data = interpreter.get_tensor(first_out["index"])  # Shape: [1, 10]
-    raw_logits = output_data[0]
+        out_scale, out_zp = _extract_quantization_params(first_out)
 
-    out_scale, out_zp = _extract_quantization_params(first_out)
-
-    # Dequantize to probabilities
-    probs = [(float(val) - out_zp) * out_scale for val in raw_logits]
-    probs = [max(0.0, min(1.0, p)) for p in probs]
-    total_p = sum(probs)
-    if total_p > 0:
-        probs = [p / total_p for p in probs]
+        # Dequantize to probabilities
+        probs = [(float(val) - out_zp) * out_scale for val in raw_logits]
+        probs = [max(0.0, min(1.0, p)) for p in probs]
+        total_p = sum(probs)
+        if total_p > 0:
+            probs = [p / total_p for p in probs]
 
     classes = get_classes()
     top_idx = int(np.argmax(probs))
