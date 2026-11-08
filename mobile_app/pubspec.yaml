@@ -1,7 +1,7 @@
 name: agrisense_mobile
 description: "AgriSense Cross-Platform Smart Agriculture & Disease Detection Application"
 publish_to: 'none'
-version: 1.0.3+4
+version: 1.0.4+5
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -29,4 +29,5 @@ flutter:
 
   assets:
     - assets/images/
-
+    - assets/cnn_weights.bin
+    - assets/cnn_weights.json

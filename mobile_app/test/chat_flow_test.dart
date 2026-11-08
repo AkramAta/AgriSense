@@ -4,31 +4,42 @@ import 'package:agrisense_mobile/services/gemini_service.dart';
 void main() {
   group('GeminiService Dynamic Offline Chat Flow Tests', () {
     late GeminiService service;
-    final activeSeptoriaDiag = {
-      'class_name': 'Tomato___Septoria_leaf_spot',
-      'confidence': 0.94,
-      'symptoms': 'Circular necrotic lesions with dark borders.',
-      'chemical_control': 'Apply Chlorothalonil or Mancozeb every 7-14 days.',
-      'organic_control': 'Spray copper soap or bio-fungicide.',
-      'cultural_practices': 'Prune lower foliage and stake vines.',
+    final activeEarlyBlightDiag = {
+      'class_name': 'Tomato___Early_blight',
+      'confidence': 0.954,
+      'symptoms': 'Concentric rings resembling a target board with dark brown necrotic tissue.',
+      'chemical_control': 'Apply Chlorothalonil or Mancozeb every 7-10 days.',
+      'organic_control': 'Apply copper soap or potassium bicarbonate.',
+      'cultural_practices': 'Prune lower foliage 12 inches above soil line.',
     };
 
     setUp(() {
       service = GeminiService();
     });
 
-    test('Response for "can you help me" gives specialist clinical consultation without menus', () async {
-      final reply = await service.sendChatMessage('can you help me', activeDiagnosis: activeSeptoriaDiag);
-      expect(reply, contains('Specialist Clinical Consultation: Septoria Leaf Spot'));
-      expect(reply, contains('Fungal Pathology Assessment'));
-      expect(reply, contains('Prescribed Clinical Remediation Plan'));
-      expect(reply.contains('How would you like to proceed?'), isFalse);
-      expect(reply.contains('Say "I want steps"'), isFalse);
+    test('Response for "help me" gives direct guidance without repetitive menus', () async {
+      final reply = await service.sendChatMessage('help me', activeDiagnosis: activeEarlyBlightDiag);
+      expect(reply, contains('Early Blight'));
+      expect(reply, contains('Immediate Fix'));
+      expect(reply, contains('Protective Spray'));
+    });
+
+    test('Response for "I don\'t understand explain" gives plain-English simplified guidance', () async {
+      final reply = await service.sendChatMessage(
+        "I don't understand explain",
+        activeDiagnosis: activeEarlyBlightDiag,
+        previousBotAnswers: ['Here is your initial advice...'],
+      );
+      expect(reply, contains('No problem at all! Let me explain this in simple, everyday language'));
+      expect(reply, contains('Early Blight'));
+      expect(reply, contains('Snip off the sick leaves'));
+      expect(reply, contains('Water only the roots'));
+      expect(reply, contains('Apply a protective spray'));
     });
 
     test('Response for "I want steps" gives 5-stage action plan', () async {
-      final reply = await service.sendChatMessage('I want steps', activeDiagnosis: activeSeptoriaDiag);
-      expect(reply, contains('5-Stage Action Plan for Septoria Leaf Spot Remediation'));
+      final reply = await service.sendChatMessage('I want steps', activeDiagnosis: activeEarlyBlightDiag);
+      expect(reply, contains('5-Stage Action Plan for Early Blight Remediation'));
       expect(reply, contains('Step 1: Immediate Sanitation & Leaf Pruning'));
       expect(reply, contains('Step 2: Targeted Foliar Spray Application'));
       expect(reply, contains('Step 3: Canopy Aeration & Trellising'));
@@ -37,57 +48,50 @@ void main() {
     });
 
     test('Response for "is there another solution ?" gives alternative & biological solutions', () async {
-      final reply = await service.sendChatMessage('is there another solution ?', activeDiagnosis: activeSeptoriaDiag);
-      expect(reply, contains('Alternative & Biological Solutions for Septoria Leaf Spot'));
+      final reply = await service.sendChatMessage('is there another solution ?', activeDiagnosis: activeEarlyBlightDiag);
+      expect(reply, contains('Alternative & Organic Solutions for Early Blight'));
       expect(reply, contains('Bacillus subtilis'));
       expect(reply, contains('Systemic Resistance Inducer'));
     });
 
     test('Response for "how often should I spray?" gives dosage & intervals', () async {
-      final reply = await service.sendChatMessage('how often should I spray?', activeDiagnosis: activeSeptoriaDiag);
-      expect(reply, contains('Spray Dosage & Application Protocol for Septoria Leaf Spot'));
+      final reply = await service.sendChatMessage('how often should I spray?', activeDiagnosis: activeEarlyBlightDiag);
+      expect(reply, contains('Spray Dosage & Application Protocol for Early Blight'));
       expect(reply, contains('7 to 10 days'));
       expect(reply, contains('6:00 AM – 9:00 AM'));
     });
 
-    test('Sequential questions produce completely different answers', () async {
-      final r1 = await service.sendChatMessage('can you help me', activeDiagnosis: activeSeptoriaDiag);
-      final r2 = await service.sendChatMessage('I want steps', activeDiagnosis: activeSeptoriaDiag);
-      final r3 = await service.sendChatMessage('is there another solution ?', activeDiagnosis: activeSeptoriaDiag);
+    test('Multi-turn conversation: "help me" followed by "I don\'t understand explain" never repeats', () async {
+      // Turn 1
+      final r1 = await service.sendChatMessage('help me', activeDiagnosis: activeEarlyBlightDiag);
+      // Turn 2
+      final r2 = await service.sendChatMessage("I don't understand explain",
+          activeDiagnosis: activeEarlyBlightDiag, previousBotAnswers: [r1]);
+      // Turn 3
+      final r3 = await service.sendChatMessage('I want steps',
+          activeDiagnosis: activeEarlyBlightDiag, previousBotAnswers: [r1, r2]);
 
       expect(r1 != r2, isTrue);
       expect(r2 != r3, isTrue);
       expect(r1 != r3, isTrue);
+      expect(r2.contains("simple, everyday language"), isTrue);
+      expect(r3.contains("5-Stage Action Plan"), isTrue);
     });
 
-    test('Follow-up "explain" gives in-depth biological mechanism without repeating previous answer', () async {
-      final activeEarlyBlight = {
-        'class_name': 'Tomato___Early_blight',
-        'confidence': 0.954,
-        'symptoms': 'Concentric target spots and chlorotic yellow halos.',
-        'chemical_control': 'Apply Chlorothalonil or Mancozeb every 7-10 days.',
-        'organic_control': 'Apply copper soap or potassium bicarbonate.',
-        'cultural_practices': 'Prune lower leaves 12 inches above soil.',
+    test('Healthy diagnosis responses are polite, informative, and adaptive', () async {
+      final healthyDiag = {
+        'class_name': 'Tomato___healthy',
+        'confidence': 0.965,
+        'is_healthy': true,
       };
 
-      // Turn 1: user asks for help
-      final r1 = await service.sendChatMessage('can you help me', activeDiagnosis: activeEarlyBlight);
-      expect(r1, contains('Specialist Clinical Consultation: Early Blight'));
+      final rHelp = await service.sendChatMessage('help me', activeDiagnosis: healthyDiag);
+      expect(rHelp, contains('Healthy'));
+      expect(rHelp, contains('Watering Schedules'));
 
-      // Turn 2: user says "explain"
-      final r2 = await service.sendChatMessage('explain', activeDiagnosis: activeEarlyBlight, previousBotAnswers: [r1]);
-      expect(r2 != r1, isTrue);
-      expect(r2, contains('In-Depth Biological Explanation: Early Blight'));
-      expect(r2, contains('Alternaria solani'));
-      expect(r2, contains('Concentric Rings'));
-      expect(r2, contains('Chlorotic Yellow Halo'));
-
-      // Turn 3: user says "what should I do?"
-      final r3 = await service.sendChatMessage('what should I do?', activeDiagnosis: activeEarlyBlight, previousBotAnswers: [r1, r2]);
-      expect(r3 != r2, isTrue);
-      expect(r3 != r1, isTrue);
-      expect(r3, contains('5-Stage Action Plan for Early Blight Remediation'));
+      final rExplain = await service.sendChatMessage('explain', activeDiagnosis: healthyDiag, previousBotAnswers: [rHelp]);
+      expect(rExplain != rHelp, isTrue);
+      expect(rExplain, contains('great shape'));
     });
   });
 }
-

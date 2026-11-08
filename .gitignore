@@ -44,6 +44,7 @@ GoogleService-Info.plist
 *.obj
 *.elf
 *.bin
+!mobile_app/assets/cnn_weights.bin
 *.hex
 *.d
 *.a
