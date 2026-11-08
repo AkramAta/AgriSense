@@ -4,6 +4,8 @@ Triggered by SQS. Fetches leaf image from S3, executes INT8 TFLite inference via
 enriches diagnosis with treatment recommendations, and records completion in DynamoDB.
 """
 
+from __future__ import annotations
+
 import datetime
 import importlib
 import io
@@ -11,7 +13,7 @@ import json
 import os
 import sys
 from decimal import Decimal
-from typing import Any
+from typing import Any, Dict, List, Optional, Tuple, Union
 import boto3
 import numpy as np
 from PIL import Image
