@@ -84,14 +84,14 @@ class DiseaseDiagnosisScreen extends StatelessWidget {
             child: const Row(
               children: [
                 Icon(
-                  Icons.auto_awesome,
+                  Icons.memory,
                   size: 18,
                   color: Color(0xFF1B5E20),
                 ),
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Engine: Gemini 1.5 Flash Vision AI Pathologist',
+                    'Engine: AgriSense 10-Class Disease Model (On-Device Edge)',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
