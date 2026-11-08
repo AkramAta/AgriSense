@@ -390,7 +390,9 @@ class GeminiService {
 
   /// Sends conversational agronomy queries to Gemini or expert offline rule engine.
   Future<String> sendChatMessage(String prompt,
-      {Map<String, dynamic>? activeDiagnosis, String? apiKey}) async {
+      {Map<String, dynamic>? activeDiagnosis,
+      String? apiKey,
+      List<String>? previousBotAnswers}) async {
     final key = apiKey?.trim().isNotEmpty == true ? apiKey!.trim() : _apiKey;
     final sanitizedPrompt = EnvConfig.sanitizePrompt(prompt);
 
@@ -480,7 +482,41 @@ class GeminiService {
       }
     }
 
-    // 2. Step-by-Step Action Plan ("steps", "i want steps", "how to", "procedure", "plan")
+    // 2. In-Depth Scientific Explanation & Disease Mechanism ("explain", "why", "elaborate", "clarify", "mechanism")
+    if (lower.contains('explain') ||
+        lower.contains('elaborate') ||
+        lower.contains('clarif') ||
+        lower.contains('why') ||
+        lower.contains('mechanism') ||
+        lower.contains('how it work') ||
+        lower.contains('how does it work') ||
+        lower.contains('tell me more') ||
+        lower.contains('detail') ||
+        lower.contains('more info') ||
+        lower == 'what' ||
+        lower == 'why?' ||
+        lower == 'explain?' ||
+        lower == 'explain' ||
+        lower == 'explain more') {
+      if (activeDiagnosis != null &&
+          activeDiagnosis.containsKey('class_name')) {
+        final rawClass = activeDiagnosis['class_name'] as String;
+        // If the user already saw the biological explanation, progress to the action plan
+        if (previousBotAnswers != null &&
+            previousBotAnswers.isNotEmpty &&
+            previousBotAnswers.any((a) => a.contains('Biological Explanation'))) {
+          return _buildActionPlan(rawClass, activeDiagnosis);
+        }
+        return _buildScientificExplanation(rawClass, activeDiagnosis);
+      } else {
+        return '**AgriSense Plant Health Scientific Guide:**\n\n'
+            '• **Pathogen Infection Dynamics:** Fungal and bacterial spores require surface water films (>2 hours) and ambient temperatures >20°C to germinate and penetrate plant stomata.\n'
+            '• **Infection Barrier:** Keeping foliage completely dry via drip irrigation and ground-clearance pruning stops spore germination.\n'
+            '• **Targeted Diagnostics:** Scan a leaf in the **Disease Scanner** tab for in-depth pathology and targeted treatment mechanisms.';
+      }
+    }
+
+    // 3. Step-by-Step Action Plan ("steps", "i want steps", "how to", "procedure", "plan")
     if (lower.contains('step') ||
         lower.contains('procedure') ||
         lower.contains('action plan') ||
@@ -493,30 +529,8 @@ class GeminiService {
         lower.contains('protocol')) {
       if (activeDiagnosis != null &&
           activeDiagnosis.containsKey('class_name')) {
-        final disease = _formatClassName(activeDiagnosis['class_name']);
-        final chemical = activeDiagnosis['chemical_control'] ??
-            'Apply targeted protective fungicide or bactericide spray.';
-        final cultural = activeDiagnosis['cultural_practices'] ??
-            'Prune lower foliage and sanitize pruning tools.';
-        return '**5-Stage Action Plan for $disease Remediation:**\n\n'
-            '• **Step 1: Immediate Sanitation & Leaf Pruning (Day 1)**\n'
-            '  - Sterilize pruning shears in 10% household bleach or 70% ethanol.\n'
-            '  - Carefully snip all lower leaves showing circular spots or chlorotic lesions.\n'
-            '  - Bag and discard clipped foliage in the trash—do not leave on the soil or add to compost.\n\n'
-            '• **Step 2: Targeted Foliar Spray Application (Day 1 - 2)**\n'
-            '  - Chemical/Organic Intervention: $chemical\n'
-            '  - Spray during early morning (6:00 - 8:30 AM) or after sunset to prevent leaf scorch.\n'
-            '  - Ensure complete coverage on both upper and lower leaf surfaces.\n\n'
-            '• **Step 3: Canopy Aeration & Trellising (Day 3)**\n'
-            '  - $cultural\n'
-            '  - Stake or trellis indeterminate vines to elevate foliage at least 30 cm above bare soil.\n'
-            '  - Prune suckers to maximize inter-row wind ventilation and accelerate leaf drying.\n\n'
-            '• **Step 4: Irrigation Guard & Soil Barrier (Day 4)**\n'
-            '  - Spread 2–3 inches of clean organic straw mulch around plant bases to prevent spore splashback.\n'
-            '  - Switch exclusively to root-zone drip irrigation; maintain soil moisture strictly between 45% and 60%.\n\n'
-            '• **Step 5: Follow-Up Scouting & Resistance Management (Day 7 - 10)**\n'
-            '  - Inspect new emergent leaf growth at Day 7.\n'
-            '  - If active lesions continue spreading under humid weather, re-spray rotating to a different FRAC chemical group.';
+        final rawClass = activeDiagnosis['class_name'] as String;
+        return _buildActionPlan(rawClass, activeDiagnosis);
       } else {
         return '**Universal 5-Step Tomato Plant Health Protocol:**\n\n'
             '• **Step 1: Diagnostic Scouting** - Inspect foliage undersides and lower canopy leaves for lesions or discoloration.\n'
@@ -527,7 +541,7 @@ class GeminiService {
       }
     }
 
-    // 3. Specialist Agronomic Consultation & Help Requests
+    // 4. Specialist Agronomic Consultation & Help Requests
     if (lower.contains('help') ||
         lower.contains('assist') ||
         lower.contains('support') ||
@@ -539,8 +553,14 @@ class GeminiService {
         lower.contains('what to do')) {
       if (activeDiagnosis != null &&
           activeDiagnosis.containsKey('class_name')) {
-        return _buildSpecialistClinicalConsultation(
-            activeDiagnosis['class_name'] as String, activeDiagnosis);
+        final rawClass = activeDiagnosis['class_name'] as String;
+        // If consultation was already provided, give the scientific explanation
+        if (previousBotAnswers != null &&
+            previousBotAnswers.isNotEmpty &&
+            previousBotAnswers.any((a) => a.contains('Specialist Clinical Consultation'))) {
+          return _buildScientificExplanation(rawClass, activeDiagnosis);
+        }
+        return _buildSpecialistClinicalConsultation(rawClass, activeDiagnosis);
       } else {
         return '**AgriSense Plant Pathology Specialist Consultation:**\n\n'
             'I am your consulting agronomist and plant pathologist. To give you a precise clinical prescription:\n\n'
@@ -550,7 +570,7 @@ class GeminiService {
       }
     }
 
-    // 4. Inquiries for Alternative Solutions ("another solution", "what else", "alternative")
+    // 5. Inquiries for Alternative Solutions ("another solution", "what else", "alternative")
     if (lower.contains('another') ||
         lower.contains('alternative') ||
         lower.contains('other option') ||
@@ -563,16 +583,8 @@ class GeminiService {
         lower.contains('besides')) {
       if (activeDiagnosis != null &&
           activeDiagnosis.containsKey('class_name')) {
-        final disease = _formatClassName(activeDiagnosis['class_name']);
-        final organic = activeDiagnosis['organic_control'] ?? 'Apply bio-fungicides like Bacillus subtilis.';
-        final cultural = activeDiagnosis['cultural_practices'] ?? 'Rotate crops and sanitize pruning tools.';
-        return '**Alternative & Biological Solutions for $disease:**\n\n'
-            '• **Biological Inoculants:** Apply *Bacillus subtilis* (Serenade ASO) or *Bacillus amyloliquefaciens* to colonize leaf surfaces and outcompete pathogenic bacteria/fungi.\n'
-            '• **Systemic Resistance Inducer:** Spray Reynoutria sachalinensis (Giant Knotweed extract, e.g., Regalia) or potassium silicate to trigger natural systemic acquired resistance (SAR) in plant cell walls.\n'
-            '• **Organic Bio-Fungicide:** $organic\n'
-            '• **Foliar Nutrition Boost:** Apply chelated Zinc and Calcium with kelp extract to strengthen cell integrity against pathogen penetration.\n'
-            '• **Preventive Sanitation:** $cultural\n'
-            '• **Soil Solarization:** Cover empty beds with clear UV-resistant plastic for 4-6 weeks between plantings to kill overwintering soil inocula.';
+        final rawClass = activeDiagnosis['class_name'] as String;
+        return _buildAlternativeSolutions(rawClass, activeDiagnosis);
       } else {
         return '**Alternative Plant Health Protocols:**\n\n'
             '• **Biological Inoculants:** Introduce mycorrhizal fungi and Trichoderma to the root zone for pathogen competition.\n'
@@ -770,16 +782,184 @@ class GeminiService {
     }
 
     // 10. General Diagnosis Remediation (Active Diagnosis)
+    String reply;
     if (activeDiagnosis != null && activeDiagnosis.containsKey('class_name')) {
-      return _buildSpecialistClinicalConsultation(
-          activeDiagnosis['class_name'] as String, activeDiagnosis);
+      final rawClass = activeDiagnosis['class_name'] as String;
+      final consultation = _buildSpecialistClinicalConsultation(rawClass, activeDiagnosis);
+
+      // If the user already received the clinical consultation in a previous turn, provide the in-depth explanation!
+      if (previousBotAnswers != null &&
+          previousBotAnswers.isNotEmpty &&
+          previousBotAnswers.any((a) => a.contains('Specialist Clinical Consultation') || a.trim() == consultation.trim())) {
+        reply = _buildScientificExplanation(rawClass, activeDiagnosis);
+      } else {
+        reply = consultation;
+      }
+    } else {
+      // 11. General Agronomy Assistant Fallback
+      reply = '**AgriSense Plant Health Assistant:**\n'
+          '• **Live Telemetry:** Monitor soil moisture, temperature, and humidity on the Telemetry tab.\n'
+          '• **Disease Scanner:** Take a clear photo of any discolored or spotted leaves for immediate pathology classification.\n'
+          '• **Consistent Irrigation:** Maintain 45%-65% soil moisture to prevent nutrient imbalances and fruit blossom end rot.';
     }
 
-    // 11. General Agronomy Assistant Fallback
-    return '**AgriSense Plant Health Assistant:**\n'
-        '• **Live Telemetry:** Monitor soil moisture, temperature, and humidity on the Telemetry tab.\n'
-        '• **Disease Scanner:** Take a clear photo of any discolored or spotted leaves for immediate pathology classification.\n'
-        '• **Consistent Irrigation:** Maintain 45%-65% soil moisture to prevent nutrient imbalances and fruit blossom end rot.';
+    // Ensure the response is NEVER an exact duplicate of the immediately preceding bot message
+    if (previousBotAnswers != null && previousBotAnswers.isNotEmpty) {
+      if (previousBotAnswers.last.trim() == reply.trim()) {
+        if (activeDiagnosis != null && activeDiagnosis.containsKey('class_name')) {
+          final rawClass = activeDiagnosis['class_name'] as String;
+          if (!previousBotAnswers.any((a) => a.contains('Biological Explanation'))) {
+            reply = _buildScientificExplanation(rawClass, activeDiagnosis);
+          } else if (!previousBotAnswers.any((a) => a.contains('5-Stage Action Plan'))) {
+            reply = _buildActionPlan(rawClass, activeDiagnosis);
+          } else {
+            reply = _buildAlternativeSolutions(rawClass, activeDiagnosis);
+          }
+        }
+      }
+    }
+
+    return reply;
+  }
+
+  String _buildActionPlan(String rawClassName, Map<String, dynamic> activeDiagnosis) {
+    final disease = _formatClassName(rawClassName);
+    final chemical = activeDiagnosis['chemical_control'] ??
+        'Apply targeted protective fungicide or bactericide spray.';
+    final cultural = activeDiagnosis['cultural_practices'] ??
+        'Prune lower foliage and sanitize pruning tools.';
+    return '**5-Stage Action Plan for $disease Remediation:**\n\n'
+        '• **Step 1: Immediate Sanitation & Leaf Pruning (Day 1)**\n'
+        '  - Sterilize pruning shears in 10% household bleach or 70% ethanol.\n'
+        '  - Carefully snip all lower leaves showing circular spots or chlorotic lesions.\n'
+        '  - Bag and discard clipped foliage in the trash—do not leave on the soil or add to compost.\n\n'
+        '• **Step 2: Targeted Foliar Spray Application (Day 1 - 2)**\n'
+        '  - Chemical/Organic Intervention: $chemical\n'
+        '  - Spray during early morning (6:00 - 8:30 AM) or after sunset to prevent leaf scorch.\n'
+        '  - Ensure complete coverage on both upper and lower leaf surfaces.\n\n'
+        '• **Step 3: Canopy Aeration & Trellising (Day 3)**\n'
+        '  - $cultural\n'
+        '  - Stake or trellis indeterminate vines to elevate foliage at least 30 cm above bare soil.\n'
+        '  - Prune suckers to maximize inter-row wind ventilation and accelerate leaf drying.\n\n'
+        '• **Step 4: Irrigation Guard & Soil Barrier (Day 4)**\n'
+        '  - Spread 2–3 inches of clean organic straw mulch around plant bases to prevent spore splashback.\n'
+        '  - Switch exclusively to root-zone drip irrigation; maintain soil moisture strictly between 45% and 60%.\n\n'
+        '• **Step 5: Follow-Up Scouting & Resistance Management (Day 7 - 10)**\n'
+        '  - Inspect new emergent leaf growth at Day 7.\n'
+        '  - If active lesions continue spreading under humid weather, re-spray rotating to a different FRAC chemical group.';
+  }
+
+  String _buildAlternativeSolutions(String rawClassName, Map<String, dynamic> activeDiagnosis) {
+    final disease = _formatClassName(rawClassName);
+    final organic = activeDiagnosis['organic_control'] ?? 'Apply bio-fungicides like Bacillus subtilis.';
+    final cultural = activeDiagnosis['cultural_practices'] ?? 'Rotate crops and sanitize pruning tools.';
+    return '**Alternative & Biological Solutions for $disease:**\n\n'
+        '• **Biological Inoculants:** Apply *Bacillus subtilis* (Serenade ASO) or *Bacillus amyloliquefaciens* to colonize leaf surfaces and outcompete pathogenic bacteria/fungi.\n'
+        '• **Systemic Resistance Inducer:** Spray Reynoutria sachalinensis (Giant Knotweed extract, e.g., Regalia) or potassium silicate to trigger natural systemic acquired resistance (SAR) in plant cell walls.\n'
+        '• **Organic Bio-Fungicide:** $organic\n'
+        '• **Foliar Nutrition Boost:** Apply chelated Zinc and Calcium with kelp extract to strengthen cell integrity against pathogen penetration.\n'
+        '• **Preventive Sanitation:** $cultural\n'
+        '• **Soil Solarization:** Cover empty beds with clear UV-resistant plastic for 4-6 weeks between plantings to kill overwintering soil inocula.';
+  }
+
+  /// Generates a deep-dive biological and pathological mechanism explanation
+  String _buildScientificExplanation(String rawClassName, Map<String, dynamic> diag) {
+    final disease = _formatClassName(rawClassName);
+    final symptoms = diag['symptoms'] ?? 'Foliar lesions and discoloration.';
+    final chemical = diag['chemical_control'] ?? 'Targeted protectant spray.';
+    final organic = diag['organic_control'] ?? 'Biological bio-fungicide.';
+
+    if (rawClassName.contains('Early_blight')) {
+      return '**In-Depth Biological Explanation: Early Blight (Alternaria solani)**\n\n'
+          '• **Pathogen Infection Cycle:**\n'
+          '  *Alternaria solani* produces microscopic asexual spores (conidia) that overwinter in crop residues and soil. When water droplets (rain splash or dew) persist on leaves for over 2 hours, spores germinate and directly breach plant cuticle and stomatal pores.\n\n'
+          '• **Why Concentric Rings & Yellow Halos Form:**\n'
+          '  1. **Concentric Rings:** As the fungal mycelium grows radially through leaf mesophyll cells, it encounters diurnal temperature shifts, creating rhythmic concentric dark rings resembling a target board.\n'
+          '  2. **Chlorotic Yellow Halo:** The fungus secretes host-specific phytotoxins (*alternariol* and *tenuazonic acid*) that rapidly break down chloroplasts and degrade chlorophyll in neighboring cells, producing the signature bright yellow perimeter.\n'
+          '  3. **Leaf Necrosis:** Toxin accumulation ruptures plant cell membranes, killing infected tissue and starving the leaf until it shrivels and drops.\n\n'
+          '• **How Prescribed Treatments Work:**\n'
+          '  - **Protectants (Chlorothalonil/Mancozeb):** Form a multisite chemical shield on the leaf surface that inactivates fungal enzymes upon contact, killing newly germinating spores.\n'
+          '  - **Copper Compounds:** Positively charged copper ions (Cu²⁺) penetrate fungal membranes, precipitating proteins and disrupting cellular respiration.\n'
+          '  - **Bottom Pruning:** Removing the lowest 30 cm of foliage breaks the upward splash ladder from soil spores.';
+    }
+
+    if (rawClassName.contains('Bacterial_spot')) {
+      return '**In-Depth Biological Explanation: Bacterial Spot (Xanthomonas spp.)**\n\n'
+          '• **Bacterial Mode of Action:**\n'
+          '  *Xanthomonas* bacteria do not produce spores. Instead, motile single-celled bacteria swim actively through water films on leaf surfaces and enter through natural leaf stomata and microscopic pruning abrasions.\n\n'
+          '• **Why Lesions Form:**\n'
+          '  1. **Water-Soaked Spots:** Inside the intercellular spaces of the leaf, bacterial multiplication releases cell-wall degrading enzymes (pectinases and cellulases), causing plant cells to collapse and leak fluid, creating the dark water-soaked appearance.\n'
+          '  2. **Angular Margins:** Unlike fungi, bacteria cannot easily cross large leaf veins, confining early spots to small angular patches between leaf venation.\n\n'
+          '• **Why Copper + Mancozeb Synergy is Essential:**\n'
+          '  Many *Xanthomonas* strains develop copper resistance. Adding Mancozeb creates a synergistic chemical reaction that solubilizes more free copper ions, overwhelming bacterial efflux pumps and killing resistant cells.';
+    }
+
+    if (rawClassName.contains('Late_blight')) {
+      return '**In-Depth Biological Explanation: Late Blight (Phytophthora infestans)**\n\n'
+          '• **Oomycete Pathology:**\n'
+          '  *Phytophthora infestans* is not a true fungus but an oomycete (water mold). Under cool, damp weather (15–20°C with >90% humidity), each sporangium releases up to 32 swimming flagellated zoospores that encyst and penetrate leaf tissue in under 60 minutes.\n\n'
+          '• **Why Damage is Fast and Catastrophic:**\n'
+          '  The pathogen aggressively lyses plant parenchyma cells. Within 3 to 5 days, small water-soaked lesions turn into large purplish-black necrotic blotches that destroy whole stems and green fruit.\n\n'
+          '• **Treatment Mechanism:**\n'
+          '  Systemic protectants (like Azoxystrobin, Difenoconazole, or copper sprays) must be applied immediately to halt zoospore motility and mycelial expansion.';
+    }
+
+    if (rawClassName.contains('Septoria')) {
+      return '**In-Depth Biological Explanation: Septoria Leaf Spot (Septoria lycopersici)**\n\n'
+          '• **Pycnidial Fungal Biology:**\n'
+          '  *Septoria lycopersici* forms tiny flask-shaped black fruiting bodies called **pycnidia** embedded directly in necrotic lesion centers.\n\n'
+          '• **Spore Dispersal Mechanism:**\n'
+          '  During rain or high humidity, pycnidia absorb moisture and exude a sticky, gelatinous ribbon of thread-like conidia. Rain splashing on these ribbons scatters thousands of infectious spores onto upper leaves.\n\n'
+          '• **Remediation Rationale:**\n'
+          '  Mulching and drip irrigation completely interrupt the splash trajectory. Fungicides form a chemical barrier, preventing spore thread germination.';
+    }
+
+    if (rawClassName.contains('Spider_mites')) {
+      return '**In-Depth Biological Explanation: Two-Spotted Spider Mites (Tetranychus urticae)**\n\n'
+          '• **Feeding Mechanism:**\n'
+          '  Spider mites possess needle-like piercing stylets. They pierce individual mesophyll leaf cells on foliage undersides and suck out the cellular fluid containing chlorophyll.\n\n'
+          '• **Why Stippling & Webbing Occur:**\n'
+          '  - **Yellow Stippling:** Each fed-upon plant cell permanently loses its green chloroplasts, creating a pinpoint white or yellow speck. Millions of feeding sites turn leaves bronze or gray.\n'
+          '  - **Silk Webbing:** Mites spin microscopic webs to shelter colonies from rain and natural predators, and to assist ballooning on air currents.\n\n'
+          '• **Control Action:**\n'
+          '  Insecticidal soaps and horticultural oils dissolve the mite\'s outer waxy cuticle, causing dehydration, while predatory mites (*Phytoseiulus*) hunt down eggs.';
+    }
+
+    if (rawClassName.contains('mosaic') || rawClassName.contains('Yellow_Leaf_Curl')) {
+      final isMosaic = rawClassName.contains('mosaic');
+      final pathogen = isMosaic ? 'Tomato Mosaic Virus (ToMV)' : 'Tomato Yellow Leaf Curl Virus (TYLCV)';
+      final vectorInfo = isMosaic
+          ? 'transmitted mechanically via microscopic sap transfers on hands, shears, and clothing'
+          : 'vectored by the sweetpotato whitefly (*Bemisia tabaci*)';
+      return '**In-Depth Biological Explanation: $pathogen**\n\n'
+          '• **Viral Cellular Hijacking:**\n'
+          '  Plant viruses do not possess cellular machinery. Once introduced via $vectorInfo, the viral RNA commandeers the plant cell ribosomes to manufacture viral coat proteins and replica RNA.\n\n'
+          '• **Why Leaf Distortion & Stunting Occur:**\n'
+          '  Systemic viral spread through the phloem disrupts natural auxin and cytokinin hormone balance. Cells divide unevenly, resulting in curled leaf margins, mottling, and stunted internodes.\n\n'
+          '• **Why Sprays Cannot Cure It:**\n'
+          '  Fungicides and antibiotics only target fungal or bacterial cells. Once inside plant vascular bundles, the virus is protected. Management relies entirely on quarantine, tool sterilization, vector eradication, and genetic resistance.';
+    }
+
+    if (rawClassName.contains('healthy')) {
+      return '**In-Depth Biological Explanation: Optimal Tomato Foliar Physiology**\n\n'
+          '• **Cellular Health & Photosynthesis:**\n'
+          '  Healthy tomato foliage features fully intact palisade and spongy mesophyll cells packed with chlorophyll a and b. Sunlight conversion to glucose fuels strong root growth, flower initiation, and fruit sizing.\n\n'
+          '• **Vascular Integrity & Transpiration:**\n'
+          '  Unclogged xylem and phloem vessels transpire moisture steadily, drawing dissolved calcium from roots to fruit tips. This steady flow is what prevents **Blossom End Rot** (calcium deficiency).\n\n'
+          '• **Maintenance Protocol:**\n'
+          '  Keep soil moisture between 45%–60% with drip irrigation, ensure good airflow, and prune bottom foliage to preserve this healthy state.';
+    }
+
+    // Default for other diseases (Leaf Mold, Target Spot, etc.)
+    return '**In-Depth Biological Explanation: $disease**\n\n'
+        '• **Pathogen Etiology:**\n'
+        '  $disease is triggered when microscopic spores land on foliage during prolonged humidity (>80%) and temperatures between 20°C–28°C.\n\n'
+        '• **Symptom Formation Mechanism:**\n'
+        '  $symptoms The pathogen penetrates leaf cells, disrupting photosynthesis and secreting enzymes that collapse cellular structure.\n\n'
+        '• **Therapeutic Mechanism:**\n'
+        '  - **Chemical Application:** $chemical\n'
+        '  - **Organic Control:** $organic\n'
+        '  - **Airflow:** Pruning lower foliage speeds canopy drying, denying the pathogen the moisture film required for spore germination.';
   }
 
   /// Generates a comprehensive clinical plant pathology consultation

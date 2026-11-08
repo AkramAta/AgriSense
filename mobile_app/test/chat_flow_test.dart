@@ -59,6 +59,35 @@ void main() {
       expect(r2 != r3, isTrue);
       expect(r1 != r3, isTrue);
     });
+
+    test('Follow-up "explain" gives in-depth biological mechanism without repeating previous answer', () async {
+      final activeEarlyBlight = {
+        'class_name': 'Tomato___Early_blight',
+        'confidence': 0.954,
+        'symptoms': 'Concentric target spots and chlorotic yellow halos.',
+        'chemical_control': 'Apply Chlorothalonil or Mancozeb every 7-10 days.',
+        'organic_control': 'Apply copper soap or potassium bicarbonate.',
+        'cultural_practices': 'Prune lower leaves 12 inches above soil.',
+      };
+
+      // Turn 1: user asks for help
+      final r1 = await service.sendChatMessage('can you help me', activeDiagnosis: activeEarlyBlight);
+      expect(r1, contains('Specialist Clinical Consultation: Early Blight'));
+
+      // Turn 2: user says "explain"
+      final r2 = await service.sendChatMessage('explain', activeDiagnosis: activeEarlyBlight, previousBotAnswers: [r1]);
+      expect(r2 != r1, isTrue);
+      expect(r2, contains('In-Depth Biological Explanation: Early Blight'));
+      expect(r2, contains('Alternaria solani'));
+      expect(r2, contains('Concentric Rings'));
+      expect(r2, contains('Chlorotic Yellow Halo'));
+
+      // Turn 3: user says "what should I do?"
+      final r3 = await service.sendChatMessage('what should I do?', activeDiagnosis: activeEarlyBlight, previousBotAnswers: [r1, r2]);
+      expect(r3 != r2, isTrue);
+      expect(r3 != r1, isTrue);
+      expect(r3, contains('5-Stage Action Plan for Early Blight Remediation'));
+    });
   });
 }
 

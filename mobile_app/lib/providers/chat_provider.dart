@@ -41,7 +41,16 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final reply = await _geminiService.sendChatMessage(clean, activeDiagnosis: activeDiagnosis);
+      final previousBotAnswers = messages
+          .where((m) => !m.isUser)
+          .map((m) => m.text)
+          .toList();
+
+      final reply = await _geminiService.sendChatMessage(
+        clean,
+        activeDiagnosis: activeDiagnosis,
+        previousBotAnswers: previousBotAnswers,
+      );
       final aiTime = DateFormat('HH:mm').format(DateTime.now());
       messages.add(ChatMessage(text: reply, isUser: false, timestamp: aiTime));
     } catch (e) {
