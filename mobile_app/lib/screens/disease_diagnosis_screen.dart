@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../providers/diagnosis_provider.dart';
+import '../providers/farm_provider.dart';
 import 'chat_screen.dart';
 
 class DiseaseDiagnosisScreen extends StatelessWidget {
@@ -48,7 +49,11 @@ class DiseaseDiagnosisScreen extends StatelessWidget {
                       style: TextStyle(fontWeight: FontWeight.bold)),
                   onPressed: diag.isLoading
                       ? null
-                      : () => diag.pickAndDiagnose(ImageSource.camera),
+                      : () {
+                          final farm = context.read<FarmProvider>();
+                          diag.pickAndDiagnose(ImageSource.camera,
+                              visionHost: farm.visionHost);
+                        },
                 ),
               ),
               const SizedBox(width: 12),
@@ -66,7 +71,11 @@ class DiseaseDiagnosisScreen extends StatelessWidget {
                       style: TextStyle(fontWeight: FontWeight.bold)),
                   onPressed: diag.isLoading
                       ? null
-                      : () => diag.pickAndDiagnose(ImageSource.gallery),
+                      : () {
+                          final farm = context.read<FarmProvider>();
+                          diag.pickAndDiagnose(ImageSource.gallery,
+                              visionHost: farm.visionHost);
+                        },
                 ),
               ),
             ],

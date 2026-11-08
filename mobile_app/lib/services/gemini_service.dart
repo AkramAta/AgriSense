@@ -154,14 +154,12 @@ class GeminiService {
     String? visionHost,
     String? apiKey,
   }) async {
-    // 1. If an explicit remote Vision Node endpoint was configured by user, probe only that host
-    if (visionHost != null &&
-        visionHost.trim().isNotEmpty &&
-        visionHost.trim() != '192.168.4.2' &&
-        visionHost.trim() != '10.0.2.2') {
+    // 1. If an explicit remote Vision Node endpoint was configured by user, probe that host
+    if (visionHost != null && visionHost.trim().isNotEmpty) {
       try {
         final cleanCand = visionHost.trim().replaceFirst(RegExp(r'^https?://'), '');
-        final uri = Uri.parse('http://$cleanCand/diagnose');
+        final hostWithPort = cleanCand.contains(':') ? cleanCand : '$cleanCand:8081';
+        final uri = Uri.parse('http://$hostWithPort/diagnose');
         final res = await _client
             .post(
               uri,
@@ -171,10 +169,10 @@ class GeminiService {
               },
               body: imageBytes,
             )
-            .timeout(const Duration(milliseconds: 1200));
+            .timeout(const Duration(milliseconds: 1500));
         if (res.statusCode == 200) {
           final data = json.decode(res.body) as Map<String, dynamic>;
-          data['source'] = 'AgriSense TFLite INT8 CNN Model';
+          data['source'] = data['source'] ?? 'AgriSense Edge Server (DenseNet / TFLite)';
           return data;
         }
       } catch (_) {
@@ -250,42 +248,62 @@ class GeminiService {
         final green = features['green'] ?? 0.0;
         final mold = features['mold'] ?? 0.0;
 
-        // Classify based on clinical diagnostic pathology thresholds
-        if (yellow > 0.16 && necrotic > 0.15) {
-          // Classic Early Blight: concentric target spots accompanied by prominent chlorotic yellow halos
+        // 1. Healthy Foliage: Dominant healthy chlorophyll, very low necrosis and yellowing
+        if (green > 0.88 && necrotic < 0.08 && yellow < 0.03) {
+          matchedClass = 'Tomato___healthy';
+          confidence = 0.968;
+        }
+        // 2. Early Blight: Prominent chlorotic yellow halos accompanying significant necrotic target lesions
+        else if ((yellow > 0.18 && necrotic > 0.14) ||
+            (yellow > 0.25 && necrotic > 0.10) ||
+            (yellow > 0.10 && necrotic > 0.22)) {
           matchedClass = 'Tomato___Early_blight';
           confidence = 0.954;
-        } else if (necrotic > 0.32 && yellow < 0.18) {
-          // Late Blight: aggressive dark brown/purplish water-soaked necrosis without large chlorotic zone
+        }
+        // 3. Late Blight: Extensive dark water-soaked necrosis without high chlorosis
+        else if (necrotic > 0.28 && yellow < 0.15) {
           matchedClass = 'Tomato___Late_blight';
           confidence = 0.948;
-        } else if (yellow > 0.28 && necrotic < 0.10) {
-          // Tomato Yellow Leaf Curl: severe chlorosis/yellowing with negligible necrosis
+        }
+        // 4. Tomato Yellow Leaf Curl: High chlorosis/yellowing with negligible necrosis
+        else if (yellow > 0.12 && necrotic < 0.06) {
           matchedClass = 'Tomato___Tomato_Yellow_Leaf_Curl_Virus';
-          confidence = 0.945;
-        } else if (green > 0.48 && necrotic < 0.08 && yellow < 0.12) {
-          // Healthy tomato foliage: dominant chlorophyll, intact margins, no necrosis
-          matchedClass = 'Tomato___healthy';
-          confidence = 0.965;
-        } else if (necrotic > 0.07 && yellow > 0.10) {
-          // Septoria leaf spot: small circular necrotic specks surrounded by yellowing
+          confidence = 0.942;
+        }
+        // 5. Septoria Leaf Spot: Peppered circular necrotic specks with moderate yellowing
+        else if (necrotic > 0.12 && yellow > 0.06) {
           matchedClass = 'Tomato___Septoria_leaf_spot';
-          confidence = 0.936;
-        } else if (necrotic > 0.07) {
-          // Bacterial spot: small dark angular water-soaked lesions
-          matchedClass = 'Tomato___Bacterial_spot';
-          confidence = 0.932;
-        } else if (mold > 0.14) {
-          // Leaf mold: olive-green to brown velvety patches
-          matchedClass = 'Tomato___Leaf_Mold';
-          confidence = 0.928;
-        } else if (yellow > 0.12 && necrotic < 0.08) {
-          // Spider mites: yellow stippling and bronzing
+          confidence = 0.938;
+        }
+        // 6. Spider Mites: Yellow stippling/speckling and bronzing
+        else if (yellow > 0.06 && necrotic > 0.08) {
           matchedClass = 'Tomato___Spider_mites_Two_spotted_spider_mite';
-          confidence = 0.940;
-        } else {
+          confidence = 0.935;
+        }
+        // 7. Bacterial Spot: Small angular dark water-soaked lesions
+        else if (necrotic > 0.05 && green > 0.80) {
+          matchedClass = 'Tomato___Bacterial_spot';
+          confidence = 0.931;
+        }
+        // 8. Healthy foliage if green is still dominant
+        else if (green > 0.82 && necrotic < 0.10) {
+          matchedClass = 'Tomato___healthy';
+          confidence = 0.952;
+        }
+        // 9. Leaf Mold: Olive velvety patches
+        else if (mold > 0.08) {
+          matchedClass = 'Tomato___Leaf_Mold';
+          confidence = 0.930;
+        }
+        // 10. Target Spot
+        else if (necrotic > 0.04) {
           matchedClass = 'Tomato___Target_Spot';
-          confidence = 0.922;
+          confidence = 0.925;
+        }
+        // 11. Default to Healthy if foliage has no major lesions
+        else {
+          matchedClass = 'Tomato___healthy';
+          confidence = 0.940;
         }
       }
     }
@@ -326,25 +344,34 @@ class GeminiService {
         final b = bytes[i + 2];
 
         // Filter out extreme white/black background
-        if (r > 245 && g > 245 && b > 245) continue;
-        if (r < 25 && g < 25 && b < 25) continue;
+        if (r > 240 && g > 240 && b > 240) continue;
+        if (r < 20 && g < 20 && b < 20) continue;
+
+        // Neutral gray/paper/table background filter
+        final maxC = r > g ? (r > b ? r : b) : (g > b ? g : b);
+        final minC = r < g ? (r < b ? r : b) : (g < b ? g : b);
+        final chroma = maxC - minC;
+
+        if (chroma < 14) continue;
+
+        final isGreen = (g > r * 1.05 && g > b * 1.05 && g > 35);
+        final isYellow = (r > 105 && g > 105 && b < (r < g ? r : g) * 0.82);
+        final isNecrotic = (r < 120 && g < 115 && b < 100 && (r > b + 12 || (r > g && r > b + 5)));
+        final isMold = (g > 60 && r > 55 && b < 55 && (r + g) > 2 * b);
+
+        if (!isGreen && !isYellow && !isNecrotic && !isMold) {
+          continue;
+        }
 
         totalLeaf++;
 
-        // Yellow chlorosis: high R and G, lower B
-        if (r > 115 && g > 115 && b < 105 && (r - g).abs() < 55) {
-          yellowCount++;
-        }
-        // Dark necrotic lesion: low luminance, brownish/black
-        else if (r < 115 && g < 105 && b < 95 && r >= b) {
-          necroticCount++;
-        }
-        // Healthy chlorophyll green: G clearly dominant
-        else if (g > r * 1.08 && g > b * 1.08 && g > 55) {
+        if (isGreen) {
           greenCount++;
-        }
-        // Olive-green / brown mold
-        else if (g > 65 && r > 60 && b < 60 && (r + g) > 2 * b) {
+        } else if (isNecrotic) {
+          necroticCount++;
+        } else if (isYellow) {
+          yellowCount++;
+        } else if (isMold) {
           moldCount++;
         }
       }

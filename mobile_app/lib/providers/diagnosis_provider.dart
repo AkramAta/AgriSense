@@ -63,7 +63,7 @@ class DiagnosisProvider extends ChangeNotifier {
   }
 
   /// Captures photo via Mobile Camera or selects from Device Gallery, then analyzes it.
-  Future<void> pickAndDiagnose(ImageSource source) async {
+  Future<void> pickAndDiagnose(ImageSource source, {String? visionHost}) async {
     try {
       final picked = await _imagePicker.pickImage(
         source: source,
@@ -79,7 +79,7 @@ class DiagnosisProvider extends ChangeNotifier {
       notifyListeners();
 
       final sourceLabel = (source == ImageSource.camera) ? 'Mobile Camera' : 'Gallery Upload';
-      await diagnoseWithModel(bytes, sourceLabel: sourceLabel, imageName: picked.name);
+      await diagnoseWithModel(bytes, sourceLabel: sourceLabel, imageName: picked.name, visionHost: visionHost);
     } catch (e) {
       errorMessage = 'Failed to capture or select image: ${e.toString()}';
       notifyListeners();
@@ -88,7 +88,7 @@ class DiagnosisProvider extends ChangeNotifier {
 
   /// Analyzes image bytes directly via the AgriSense 10-Class CNN Model.
   Future<void> diagnoseWithModel(Uint8List imageBytes,
-      {String sourceLabel = 'Mobile Camera', String? imageName}) async {
+      {String sourceLabel = 'Mobile Camera', String? imageName, String? visionHost}) async {
     isLoading = true;
     errorMessage = null;
     notifyListeners();
@@ -98,6 +98,7 @@ class DiagnosisProvider extends ChangeNotifier {
       final result = await _geminiService.diagnoseLeafImage(
         imageBytes,
         imageName: nameToUse,
+        visionHost: visionHost,
       );
       final nowFormatted = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
 
