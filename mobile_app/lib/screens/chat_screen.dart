@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../config/env_config.dart';
 import '../providers/chat_provider.dart';
 import '../providers/diagnosis_provider.dart';
 
@@ -184,105 +183,6 @@ class _ChatScreenState extends State<ChatScreen> {
       appBar: AppBar(
         title: const Text('AI Agronomist Chat'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.key),
-            tooltip: 'Gemini API Key Security Settings',
-            onPressed: () {
-              final diag = context.read<DiagnosisProvider>();
-              final keyController = TextEditingController(text: diag.apiKey);
-              final obscureNotifier = ValueNotifier<bool>(true);
-
-              showDialog(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: const Row(
-                    children: [
-                      Icon(Icons.security, color: Colors.green),
-                      SizedBox(width: 8),
-                      Text('Gemini API Key Security'),
-                    ],
-                  ),
-                  content: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: Colors.grey.shade300),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.lock, size: 16, color: Colors.green),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                'Current: ${EnvConfig.maskApiKey(diag.apiKey)}',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  fontFamily: 'monospace',
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      const Text(
-                        'Your API key is stored securely in local device storage and is never transmitted to third parties. Enter a new key or leave blank for offline specialist consultation.',
-                        style: TextStyle(fontSize: 11, color: Colors.black87),
-                      ),
-                      const SizedBox(height: 12),
-                      ValueListenableBuilder<bool>(
-                        valueListenable: obscureNotifier,
-                        builder: (context, isObscured, _) {
-                          return TextField(
-                            controller: keyController,
-                            obscureText: isObscured,
-                            decoration: InputDecoration(
-                              labelText: 'Google Gemini API Key',
-                              border: const OutlineInputBorder(),
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  isObscured ? Icons.visibility_off : Icons.visibility,
-                                  size: 20,
-                                ),
-                                tooltip: isObscured ? 'Show Key' : 'Hide Key',
-                                onPressed: () => obscureNotifier.value = !isObscured,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () async {
-                        await diag.setApiKey('');
-                        if (ctx.mounted) Navigator.pop(ctx);
-                      },
-                      child: const Text('Reset', style: TextStyle(color: Colors.red)),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      child: const Text('Cancel'),
-                    ),
-                    ElevatedButton(
-                      onPressed: () async {
-                        await diag.setApiKey(keyController.text.trim());
-                        if (ctx.mounted) Navigator.pop(ctx);
-                      },
-                      child: const Text('Save'),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Clear Chat',

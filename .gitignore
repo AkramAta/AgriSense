@@ -73,6 +73,8 @@ android/app/release/
 ios/Pods/
 ios/.symlinks/
 *.lock
+*.apk
+*.aab
 
 # ML Large Datasets & Raw Downloads
 ml/dataset/train/
