@@ -23,3 +23,4 @@ class TfliteService {
 
   static void close() {}
 }
+

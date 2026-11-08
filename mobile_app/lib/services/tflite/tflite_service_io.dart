@@ -111,3 +111,4 @@ class TfliteService {
     _loadFailed = false;
   }
 }
+
